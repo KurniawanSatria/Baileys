@@ -69,6 +69,8 @@ import makeWASocket from '@innovatorssoft/baileys'
 - [Implementing a Data Store](#implementing-a-data-store)
 - [Whatsapp IDs Explain](#whatsapp-ids-explain)
 - [Utility Functions](#utility-functions)
+- [Anti-Delete System](#anti-delete-system)
+- [JID Plotting & LID Support](#jid-plotting--lid-support)
 - [Sending Messages](#sending-messages)
     - [Non-Media Messages](#non-media-messages)
         - [Text Message](#text-message)
@@ -517,6 +519,56 @@ The store also provides some simple functions such as `loadMessages` that utiliz
 - `getDevice`, returns the device from message
 - `makeCacheableSignalKeyStore`, make auth store more fast
 - `downloadContentFromMessage`, download content from any message
+- `parseJid`, parse and extract info from any JID (PN or LID)
+- `getSenderPn`, get your own phone number info from creds
+
+### JID Plotting & LID Support
+Baileys-Joss includes advanced JID plotting utilities to handle WhatsApp's Linked IDs (LID).
+
+```ts
+import { parseJid, plotJid, normalizePhoneToJid } from '@innovatorssoft/baileys'
+
+// Parse JID info
+const info = parseJid('1234567890@s.whatsapp.net')
+console.log(info.isLid) // false
+console.log(info.user) // '1234567890'
+
+// Normalize various formats to JID
+const jid = normalizePhoneToJid('62812345678') // '62812345678@s.whatsapp.net'
+
+// Plot JID (Convert between PN and LID if mapping is available)
+const plotted = plotJid('1234567890@s.whatsapp.net')
+```
+
+## Anti-Delete System
+The Anti-Delete system allows you to store messages and recover them if they are revoked (deleted for everyone) by the sender.
+
+```ts
+import { MessageStore, createMessageStoreHandler, createAntiDeleteHandler } from '@innovatorssoft/baileys'
+
+// Initialize the store
+const store = new MessageStore({
+    maxMessagesPerChat: 1000,
+    ttl: 24 * 60 * 60 * 1000 // Keep messages for 24 hours
+})
+
+// 1. Listen for new messages to store them
+sock.ev.on('messages.upsert', createMessageStoreHandler(store))
+
+// 2. Listen for message updates (revokes/deletions)
+const antiDeleteHandler = createAntiDeleteHandler(store)
+sock.ev.on('messages.update', (updates) => {
+    const deletedMessages = antiDeleteHandler(updates)
+    for (const info of deletedMessages) {
+        console.log(`Message from ${info.key.remoteJid} was deleted!`)
+        console.log('Original Content:', info.originalMessage.message)
+        
+        // You can now re-send the message or alert the user
+        // await sock.copyNForward(info.key.remoteJid, info.originalMessage)
+    }
+})
+```
+
 
 ## Sending Messages
 
