@@ -83,6 +83,25 @@ export declare const makeInMemoryStore: (config: BaileysInMemoryStoreConfig) => 
     fetchImageUrl: (jid: string, suki: WASocket | undefined) => Promise<string | null | undefined>
     fetchGroupMetadata: (jid: string, suki: WASocket | undefined) => Promise<GroupMetadata>
     fetchMessageReceipts: ({ remoteJid, id }: WAMessageKey) => Promise<proto.IUserReceipt[] | null | undefined>
+    /**
+     * Get a message from the store for retry/poll decryption purposes.
+     * Can be used as the `getMessage` option in makeWASocket.
+     */
+    getMessage: (key: WAMessageKey) => Promise<proto.IMessage | undefined>
+    getAllMessages: () => {
+        [_: string]: {
+            array: proto.IWebMessageInfo[]
+            get: (id: string) => proto.IWebMessageInfo | undefined
+            upsert: (item: proto.IWebMessageInfo, mode: "append" | "prepend") => void
+            update: (item: proto.IWebMessageInfo) => boolean
+            remove: (item: proto.IWebMessageInfo) => boolean
+            updateAssign: (id: string, update: Partial<proto.IWebMessageInfo>) => boolean
+            clear: () => void
+            filter: (contain: (item: proto.IWebMessageInfo) => boolean) => void
+            toJSON: () => proto.IWebMessageInfo[]
+            fromJSON: (newItems: proto.IWebMessageInfo[]) => void
+        }
+    }
     toJSON: () => {
         chats: KeyedDB<Chat, string>
         contacts: {

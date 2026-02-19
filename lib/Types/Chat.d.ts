@@ -1,7 +1,6 @@
 import type { proto } from '../../WAProto'
 import type { AccountSettings } from './Auth'
 import type { QuickReplyAction } from './Bussines'
-import type { ContactAction } from './Contact'
 import type { BufferedEventData } from './Events'
 import type { LabelActionBody } from './Label'
 import type { ChatLabelAssociationActionBody } from './LabelAssociation'
@@ -81,8 +80,6 @@ export type ChatModification = {
     archive: boolean
     lastMessages: LastMessageList
 } | {
-    contact: ContactAction | null
-} | {
     pushNameSetting: string
 } | {
     pin: boolean
@@ -91,6 +88,7 @@ export type ChatModification = {
     mute: number | null
 } | {
     clear: boolean
+    lastMessages: LastMessageList
 } | {
     deleteForMe: {
         deleteMedia: boolean

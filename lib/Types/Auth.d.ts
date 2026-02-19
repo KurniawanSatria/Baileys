@@ -24,6 +24,11 @@ export type SignalIdentity = {
     identifierKey: Uint8Array
 }
 
+export type LIDMapping = {
+    pn: string
+    lid: string
+}
+
 export type LTHashState = {
     version: number
     hash: Buffer
@@ -67,6 +72,7 @@ export type AuthenticationCreds = SignalCreds & {
     pairingCode: string | undefined
     lastPropHash: string | undefined
     routingInfo: Buffer | undefined
+    additionalData?: any | undefined
 }
 
 export type SignalDataTypeMap = {
@@ -79,6 +85,9 @@ export type SignalDataTypeMap = {
     'app-state-sync-key': proto.Message.IAppStateSyncKeyData
     'app-state-sync-version': LTHashState
     'lid-mapping': string
+    'device-list': string[]
+    'tctoken': { token: Buffer; timestamp?: string }
+    'identity-key': Uint8Array
 }
 
 export type SignalDataSet = {
@@ -118,4 +127,4 @@ export type AuthenticationState = {
     keys: SignalKeyStore
 }
 
-export {}
+export { }

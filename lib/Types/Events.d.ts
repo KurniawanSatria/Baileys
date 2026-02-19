@@ -1,10 +1,10 @@
 import type { Boom } from '@hapi/boom'
 import { proto } from '../../WAProto'
-import { AuthenticationCreds } from './Auth'
+import { AuthenticationCreds, LIDMapping } from './Auth'
 import { WACallEvent } from './Call'
 import { Chat, ChatUpdate, PresenceData } from './Chat'
 import { Contact } from './Contact'
-import { GroupMetadata, ParticipantAction, RequestJoinAction, RequestJoinMethod } from './GroupMetadata'
+import { GroupMetadata, GroupParticipant, ParticipantAction, RequestJoinAction, RequestJoinMethod } from './GroupMetadata'
 import { Label } from './Label'
 import { LabelAssociation } from './LabelAssociation'
 import { MessageUpsertType, MessageUserReceiptUpdate, WAMessage, WAMessageKey, WAMessageUpdate } from './Message'
@@ -21,19 +21,17 @@ export type BaileysEventMap = {
         chats: Chat[]
         contacts: Contact[]
         messages: WAMessage[]
+        lidPnMappings?: LIDMapping[]
         isLatest?: boolean
         progress?: number | null
-        syncType?: proto.HistorySync.HistorySyncType
+        syncType?: proto.HistorySync.HistorySyncType | null
         peerDataRequestSessionId?: string | null
     }
     /** upsert chats */
     'chats.upsert': Chat[]
     /** update the given chats */
     'chats.update': ChatUpdate[]
-    'lid-mapping.update': {
-        lid: string
-        pn: string
-    }
+    'lid-mapping.update': LIDMapping
     /** delete chats with given ID */
     'chats.delete': string[]
     /** presence of contact in a chat updated */
@@ -86,39 +84,50 @@ export type BaileysEventMap = {
     'group-participants.update': {
         id: string
         author: string
-        participants: string[]
+        authorPn?: string
+        participants: GroupParticipant[]
         action: ParticipantAction
     }
     'group.join-request': {
         id: string
         author: string
+        authorPn?: string
         participant: string
+        participantPn?: string
         action: RequestJoinAction
         method: RequestJoinMethod
     }
+    /** update the labels assigned to a group participant */
+    'group.member-tag.update': {
+        groupId: string
+        participant: string
+        participantAlt?: string
+        label: string
+        messageTimestamp?: number
+    }
     'newsletter.reaction': {
-    	id: string
+        id: string
         newsletter_server_id: string
         reaction: {
-        	code?: string
+            code?: string
             count?: number
             removed?: boolean
         }
     }
     'newsletter.view': {
-    	id: string
+        id: string
         newsletter_server_id: string
         count: number
     }
     'newsletter-participants.update': {
-    	id: string
+        id: string
         author: string
         user: string
         new_role: NewsletterViewRole
         action: SubscriberAction
     }
     'newsletter-settings.update': {
-    	id: string
+        id: string
         update: NewsletterSettingsUpdate
     }
     'limit-sharing.update': {
@@ -148,6 +157,24 @@ export type BaileysEventMap = {
     'labels.association': {
         association: LabelAssociation
         type: 'add' | 'remove'
+    }
+
+    /** Settings and actions sync events */
+    'chats.lock': { id: string; locked: boolean }
+    'settings.update':
+    | { setting: 'unarchiveChats'; value: boolean }
+    | { setting: 'locale'; value: string }
+    | { setting: 'disableLinkPreviews'; value: proto.SyncActionValue.IPrivacySettingDisableLinkPreviewsAction }
+    | { setting: 'timeFormat'; value: proto.SyncActionValue.ITimeFormatAction }
+    | { setting: 'privacySettingRelayAllCalls'; value: proto.SyncActionValue.IPrivacySettingRelayAllCalls }
+    | { setting: 'statusPrivacy'; value: proto.SyncActionValue.IStatusPrivacyAction }
+    | {
+        setting: 'notificationActivitySetting'
+        value: proto.SyncActionValue.NotificationActivitySettingAction.NotificationActivitySetting
+    }
+    | {
+        setting: 'channelsPersonalisedRecommendation'
+        value: proto.SyncActionValue.IPrivacySettingChannelsPersonalisedRecommendationAction
     }
 }
 

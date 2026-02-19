@@ -113,6 +113,12 @@ export declare class MessageStore {
      * Clear chat
      */
     clearChat(chatId: string): void;
+    /**
+     * Get all messages in all chats (compatibility for bot saving)
+     */
+    getAllMessages(): {
+        [jid: string]: WAMessage[];
+    };
 }
 /**
  * Check apakah message adalah delete/revoke message

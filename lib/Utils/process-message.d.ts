@@ -1,6 +1,6 @@
-import { AxiosRequestConfig } from 'axios'
 import { proto } from '../../WAProto'
 import { AuthenticationCreds, BaileysEventEmitter, CacheStore, SignalKeyStoreWithTransaction, SocketConfig } from '../Types'
+import { SignalRepository } from '../Types/Signal'
 import { ILogger } from './logger'
 
 type ProcessMessageContext = {
@@ -8,10 +8,11 @@ type ProcessMessageContext = {
     placeholderResendCache?: CacheStore
     creds: AuthenticationCreds
     keyStore: SignalKeyStoreWithTransaction
+    signalRepository: SignalRepository
     ev: BaileysEventEmitter
     getMessage: SocketConfig['getMessage']
     logger?: ILogger
-    options: AxiosRequestConfig<{}>
+    options: RequestInit
 }
 
 /** Cleans a received message to further processing */

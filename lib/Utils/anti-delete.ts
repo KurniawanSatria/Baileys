@@ -268,6 +268,17 @@ export class MessageStore {
     clearChat(chatId: string): void {
         this.store.delete(chatId)
     }
+
+    /**
+     * Get all messages in all chats (compatibility for bot saving)
+     */
+    getAllMessages(): { [jid: string]: WAMessage[] } {
+        const all: { [jid: string]: WAMessage[] } = {}
+        for (const [chatId, messages] of this.store) {
+            all[chatId] = Array.from(messages.values()).map(s => s.message)
+        }
+        return all
+    }
 }
 
 // =====================================================

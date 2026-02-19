@@ -1,4 +1,3 @@
-import { AxiosRequestConfig } from 'axios'
 import { ILogger } from './logger'
 import { proto } from '../../WAProto'
 import { BaileysEventEmitter, BaileysEventMap, BrowsersMap, ConnectionState, WACallUpdateType, WAVersion } from '../Types'
@@ -14,6 +13,8 @@ export declare const BufferJSON: {
 }
 
 export declare const getKeyAuthor: (key: proto.IMessageKey | undefined | null, meId?: string) => string
+
+export declare const isStringNullOrEmpty: (value: string | null | undefined) => value is null | undefined | ''
 
 export declare const writeRandomPadMax16: (msg: Uint8Array) => Buffer
 
@@ -63,8 +64,18 @@ export declare const printQRIfNecessaryListener: (ev: BaileysEventEmitter, logge
  * utility that fetches latest baileys version from the master branch.
  * Use to ensure your WA connection is always on the latest version
  */
- 
-export declare const fetchLatestBaileysVersion: (options?: AxiosRequestConfig<{}>) => Promise<{
+
+export declare const fetchLatestBaileysVersion: (options?: RequestInit) => Promise<{
+    version: WAVersion
+    isLatest: boolean
+    error?: undefined
+} | {
+    version: WAVersion
+    isLatest: boolean
+    error: any
+}>
+
+export declare const fetchLatestWaWebVersion: (options?: RequestInit) => Promise<{
     version: WAVersion
     isLatest: boolean
     error?: undefined
@@ -80,7 +91,7 @@ export declare const generateMdTagPrefix: () => string
  * Given a type of receipt, returns what the new status of the message should be
  * @param type type from receipt
  */
- 
+
 export declare const getStatusFromReceiptType: (type: string | undefined) => proto.WebMessageInfo.Status
 /**
  * Stream errors generally provide a reason, map that to a baileys DisconnectReason
