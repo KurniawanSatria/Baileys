@@ -114,7 +114,7 @@ export declare const makeBusinessSocket: (config: SocketConfig) => {
     }
     upsertMessage: (msg: import("../Types").WAProto.IWebMessageInfo, type: import("../Types").MessageUpsertType) => Promise<void>
     appPatch: (patchCreate: import("../Types").WAPatchCreate) => Promise<void>
-    sendPresenceUpdate: (type: import("../Types").WAPresence, toJid?: string | undefined) => Promise<void>
+    sendPresenceUpdate: (type: import("../Types").WAPresence, toJid?: string | undefined, options?: { simulateTyping?: boolean; typingDuration?: number }) => Promise<void>
     presenceSubscribe: (toJid: string, tcToken?: Buffer | undefined) => Promise<void>
     getBotListV2: () => Promise<BotListInfo[]>
     getLidUser: (jid: string) => Promise<{

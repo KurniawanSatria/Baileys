@@ -48,7 +48,9 @@ import makeWASocket from '@innovatorssoft/baileys'
 # Links
 - [Innovators](https://discord.gg/G3RfM6FDHS)    
 - [Itsukichan](https://discord.gg/nqssuNjjSH)
-- [Original Docs](https://guide.whiskeysockets.io/)
+- [Original Guide](https://guide.whiskeysockets.io/)
+- [Baileys Guide](https://innovatorssoftpk.com/)
+- [Deep Wiki](https://deepwiki.com/innovatorssoft/Baileys)
 
 # Index
 
@@ -63,12 +65,14 @@ import makeWASocket from '@innovatorssoft/baileys'
 
 - [Save Auth Info](#saving--restoring-sessions)
 - [Handling Events](#handling-events)
+    - [Auto-Reply System](#auto-reply-system)
     - [Example to Start](#example-to-start)
     - [Decrypt Poll Votes](#decrypt-poll-votes)
     - [Summary of Events on First Connection](#summary-of-events-on-first-connection)
 - [Implementing a Data Store](#implementing-a-data-store)
 - [Whatsapp IDs Explain](#whatsapp-ids-explain)
 - [Utility Functions](#utility-functions)
+    - [Message Scheduler](#message-scheduler)
 - [Anti-Delete System](#anti-delete-system)
 - [JID Plotting & LID Support](#jid-plotting--lid-support)
 - [Sending Messages](#sending-messages)
@@ -108,7 +112,10 @@ import makeWASocket from '@innovatorssoft/baileys'
         - [Buttons Interactive Message PAY](#buttons-interactive-message-PAY) 
         - [Status Mentions Message](#status-mentions-message) 
         - [Shop Message](#shop-message) 
-        - [Collection Message](#collection-message) 
+        - [Collection Message](#collection-message)
+        - [vCard / Contact Cards](#vcard--contact-cards)
+        - [Message Templates](#message-templates)
+        - [Interactive Messages](#interactive-messages) 
     - [AI Icon Feature](#ai-icon-feature) 
     - [Sending with Link Preview](#sending-messages-with-link-previews)
     - [Media Messages](#media-messages)
@@ -116,6 +123,8 @@ import makeWASocket from '@innovatorssoft/baileys'
         - [Video Message](#video-message)
         - [Audio Message](#audio-message)
         - [Image Message](#image-message)
+        - [HD Image Message](#hd-image-message)
+        - [HD Video Message](#hd-video-message)
         - [Album Message](#album-message) 
         - [Ptv Video Message](#ptv-video-message) 
         - [ViewOnce Message](#view-once-message)
@@ -131,6 +140,8 @@ import makeWASocket from '@innovatorssoft/baileys'
 - [Send States in Chat](#send-states-in-chat)
     - [Reading Messages](#reading-messages)
     - [Update Presence](#update-presence)
+    - [Typing Indicator](#typing-indicator)
+    - [Read Receipt Control](#read-receipt-control)
 - [Modifying Chats](#modifying-chats)
     - [Archive a Chat](#archive-a-chat)
     - [Mute/Unmute a Chat](#muteunmute-a-chat)
@@ -147,10 +158,12 @@ import makeWASocket from '@innovatorssoft/baileys'
     - [Fetch Profile Picture (groups too)](#fetch-profile-picture-groups-too)
     - [Fetch Bussines Profile (such as description or category)](#fetch-bussines-profile-such-as-description-or-category)
     - [Fetch Someone's Presence (if they're typing or online)](#fetch-someones-presence-if-theyre-typing-or-online)
+    - [Message Search](#message-search)
 - [Change Profile](#change-profile)
     - [Change Profile Status](#change-profile-status)
     - [Change Profile Name](#change-profile-name)
     - [Change Display Picture (groups too)](#change-display-picture-groups-too)
+    - [Panoramic (Wide) Profile Picture](#panoramic-wide-profile-picture)
     - [Remove display picture (groups too)](#remove-display-picture-groups-too)
 - [Groups](#groups)
     - [Create a Group](#create-a-group)
@@ -184,6 +197,7 @@ import makeWASocket from '@innovatorssoft/baileys'
 - [Broadcast Lists & Stories](#broadcast-lists--stories)
     - [Send Broadcast & Stories](#send-broadcast--stories)
     - [Query a Broadcast List's Recipients & Name](#query-a-broadcast-lists-recipients--name)
+    - [Status / Story Posting](#status--story-posting)
 - [Writing Custom Functionality](#writing-custom-functionality)
     - [Enabling Debug Level in Baileys Logs](#enabling-debug-level-in-baileys-logs)
     - [How Whatsapp Communicate With Us](#how-whatsapp-communicate-with-us)
@@ -465,6 +479,117 @@ sock.ev.on("messages.update", async (chatUpdate) => {
 1. When you connect first time, `connection.update` will be fired requesting you to restart sock
 2. Then, history messages will be received in `messaging.history-set`
 
+### Auto-Reply System
+
+Keyword/pattern-based automatic response handler with built-in **typing simulation** — shows a "typing..." indicator before sending each reply to feel more human.
+
+```ts
+import { createAutoReply } from '@innovatorssoft/baileys'
+```
+
+### Setup with Typing Simulation
+
+```ts
+const autoReply = createAutoReply(
+    // Wire sendMessage
+    (jid, content, opts) => sock.sendMessage(jid, content, opts),
+    // Wire sendPresence — REQUIRED for simulateTyping
+    (jid, presence) => sock.sendPresenceUpdate(presence, jid),
+    {
+        simulateTyping: true,   // show "typing..." before each reply
+        typingDuration: 1500,   // show it for 1.5 seconds (default: 1000)
+        globalCooldown: 2000,   // wait 2 s before replying to the same JID again
+        onReply:  (rule, msg, resp) => console.log(`Auto-replied with rule: ${rule.id}`),
+        onError:  (err, rule, msg)  => console.error(`Rule ${rule.id} failed:`, err.message)
+    }
+)
+
+// Wire to your message event
+sock.ev.on('messages.upsert', async ({ messages }) => {
+    for (const msg of messages) {
+        if (!msg.key.fromMe) {
+            await autoReply.processMessage(msg)
+        }
+    }
+})
+```
+
+### Adding Rules
+
+```ts
+// Keyword match (substring, case-insensitive)
+autoReply.addRule({
+    keywords: ['hi', 'hello', 'hey', 'halo'],
+    response: { text: 'Hello! How can I help you? 👋' },
+    quoted:   true  // reply quoting the original message
+})
+
+// Regex pattern with dynamic/async response
+autoReply.addRule({
+    pattern:  /^!weather (.+)$/i,
+    response: async (msg, match) => ({
+        text: `Weather for *${match[1]}*: ☀️ 28°C, Humidity: 70%`
+    })
+})
+
+// Exact text match, groups only, with per-JID cooldown
+autoReply.addRule({
+    exactMatch: '!help',
+    groupsOnly: true,
+    cooldown:   30_000,  // cooldown 30 s per JID
+    response:   { text: 'Available commands:\n• !help\n• !info\n• !ping' }
+})
+
+// Private chats only, higher priority (checked before lower-priority rules)
+autoReply.addRule({
+    keywords:     ['buy', 'price', 'order'],
+    privateOnly:  true,
+    priority:     10,
+    response:     { text: 'Please visit our store: https://example.com' }
+})
+
+// Allowed JIDs only
+autoReply.addRule({
+    keywords:    ['secret'],
+    allowedJids: ['628xxx@s.whatsapp.net'],
+    response:    { text: '🔐 Secret message!' }
+})
+```
+
+### Managing Rules
+
+```ts
+// Get a rule by ID
+const rule = autoReply.getRule(rule.id)
+
+// Enable / disable a rule
+autoReply.setRuleActive(rule.id, false)  // pause
+autoReply.setRuleActive(rule.id, true)   // resume
+
+// Remove a specific rule
+autoReply.removeRule(rule.id)
+
+// List all rules
+const rules = autoReply.getRules()
+
+// Wipe all rules
+autoReply.clearRules()
+```
+
+### `AutoReplyOptions` Reference
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `simulateTyping` | `boolean` | `false` | Show "typing…" before replying |
+| `typingDuration` | `number` | `1000` | Duration of typing indicator in ms |
+| `globalCooldown` | `number` | `1000` | Min time between replies to same JID |
+| `multiMatch` | `boolean` | `false` | Reply for every matching rule (not just the first) |
+| `onReply` | `function` | — | Called after each successful reply |
+| `onError` | `function` | — | Called when a rule throws |
+
+---
+
+
 ## Implementing a Data Store
 
 - Baileys does not come with a defacto storage for chats, contacts, or messages. However, a simple in-memory implementation has been provided. The store listens for chat updates, new messages, message updates, etc., to always have an up-to-date version of the data.
@@ -524,7 +649,7 @@ The store also provides some simple functions such as `loadMessages` that utiliz
 - `getSenderPn`, get your own phone number info from creds
 
 ### JID Plotting & LID Support
-Baileys-Joss includes advanced JID plotting utilities to handle WhatsApp's Linked IDs (LID).
+InnovatorsSoft Baileys has advanced JID plotting utilities to handle WhatsApp's Linked IDs (LID).
 
 ```ts
 import { parseJid, plotJid, normalizePhoneToJid } from '@innovatorssoft/baileys'
@@ -540,6 +665,121 @@ const jid = normalizePhoneToJid('62812345678') // '62812345678@s.whatsapp.net'
 // Plot JID (Convert between PN and LID if mapping is available)
 const plotted = plotJid('1234567890@s.whatsapp.net')
 ```
+
+### Message Scheduler
+
+Schedule WhatsApp messages to be automatically sent at a specific future time (or after a delay). The scheduler is exported directly from the package — no external dependencies required.
+
+```ts
+import { createMessageScheduler } from '@innovatorssoft/baileys'
+```
+
+### Setup
+
+```ts
+const scheduler = createMessageScheduler(
+    // Wire the scheduler to your socket's sendMessage function
+    (jid, content) => sock.sendMessage(jid, content),
+    {
+        // Called when each message is successfully sent
+        onSent: (scheduled, message) => {
+            console.log(`✅ Sent to ${scheduled.jid} (id: ${scheduled.id})`)
+        },
+        // Called when a message fails to send
+        onFailed: (scheduled, error) => {
+            console.error(`❌ Failed for ${scheduled.jid}: ${error.message}`)
+        },
+        maxQueue:      1000,   // max pending messages (default: 1000)
+        checkInterval: 1000    // polling interval in ms (default: 1000)
+    }
+)
+```
+
+### Schedule at a Specific Time
+
+```ts
+// Schedule a birthday message
+const entry = scheduler.schedule(
+    '6281234567890@s.whatsapp.net',
+    { text: 'Happy Birthday! 🎂' },
+    new Date('2026-12-25T09:00:00')
+)
+
+console.log('Scheduled with ID:', entry.id)
+
+// Schedule any message type
+scheduler.schedule(
+    groupJid,
+    {
+        image: { url: './promo.jpg' },
+        caption: 'Weekend sale starts now! 🛍️'
+    },
+    new Date('2026-12-20T08:00:00')
+)
+```
+
+### Schedule with a Delay
+
+```ts
+// Send in 30 minutes
+scheduler.scheduleDelay(jid, { text: 'Reminder! ⏰' }, 30 * 60 * 1000)
+
+// Send in 2 hours
+scheduler.scheduleDelay(jid, { text: 'Follow-up check-in' }, 2 * 60 * 60 * 1000)
+
+// Send in 1 day
+scheduler.scheduleDelay(jid, { text: 'Daily update' }, 24 * 60 * 60 * 1000)
+```
+
+### Manage Scheduled Messages
+
+```ts
+// Cancel a specific message
+const wasCancelled = scheduler.cancel(entry.id)
+console.log(wasCancelled) // true if found & pending
+
+// Cancel all pending messages for a JID
+const count = scheduler.cancelForJid(jid)
+console.log(`Cancelled ${count} messages`)
+
+// List all pending messages
+const pending = scheduler.getPending()
+console.log(`${pending.length} messages still pending`)
+
+// Get a specific entry by ID
+const entry2 = scheduler.get(entry.id)
+
+// Stop the internal timer (queue is preserved, just paused)
+scheduler.stop()
+
+// Restart after stop
+scheduler.start()
+
+// Wipe the entire queue and stop the timer
+const cleared = scheduler.clearAll()
+console.log(`Cleared ${cleared} entries`)
+```
+
+### `ScheduledMessage` Object
+
+Every `schedule()` / `scheduleDelay()` call returns a `ScheduledMessage`:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | `string` | Unique entry ID (`sched_<timestamp>_<random>`) |
+| `jid` | `string` | Recipient JID |
+| `content` | `AnyMessageContent` | Message content |
+| `scheduledTime` | `Date` | When it will be sent |
+| `createdAt` | `Date` | When it was scheduled |
+| `status` | `'pending' \| 'sent' \| 'failed' \| 'cancelled'` | Current status |
+| `error?` | `string` | Set when `status === 'failed'` |
+| `messageId?` | `string` | WhatsApp message ID after successful send |
+
+> [!NOTE]
+> The scheduler is **in-memory only**. Scheduled messages are lost if the process restarts. For persistence across restarts, serialize `getPending()` to a database and restore on startup by calling `schedule()` for each entry.
+
+---
+
 
 ## Anti-Delete System
 The Anti-Delete system allows you to store messages and recover them if they are revoked (deleted for everyone) by the sender.
@@ -699,6 +939,232 @@ await sock.sendMessage(
     }
 )
 ```
+
+#### vCard / Contact Cards
+
+Easily generate and send vCard (VCF) contact data.
+
+```ts
+import { 
+    quickContact, 
+    createContactCard, 
+    createContactCards 
+} from '@innovatorssoft/baileys'
+```
+
+#### Message Templates
+
+Generate consistently formatted messages using native template string interpolation with curly brackets (e.g., `{{variable:defaultValue}}`).
+
+```ts
+import { 
+    createTemplateManager, 
+    renderTemplate, 
+    PRESET_TEMPLATES 
+} from '@innovatorssoft/baileys'
+
+// Create a manager and load the presets (includePresets = true)
+const templates = createTemplateManager(true)
+
+// Or, quick render without loading the manager
+const quick = renderTemplate(
+    'Hi {{name}}, your order #{{orderId}} is {{status:processing}}',
+    { name: 'Alice', orderId: '123' } // 'processing' acts a default value
+)
+```
+
+#### Interactive Messages
+
+Send native formatting wrappers—like buttons, lists, URL CTAs, and Copy CTAs—without directly formatting the complex payload manually.
+
+```typescript
+import { 
+    generateInteractiveButtonMessage,
+    generateInteractiveListMessage,
+    generateCombinedButtons,
+    generateCopyCodeButton,
+    generateUrlButtonMessage,
+    generateQuickReplyButtons
+} from '@innovatorssoft/baileys'
+
+// Quick Reply Buttons
+const quickButtons = generateQuickReplyButtons(
+    'Please select an option below:',
+    [
+        { id: 'btn-1', displayText: '✅ Accept' },
+        { id: 'btn-2', displayText: '❌ Reject' },
+        { id: 'btn-3', displayText: '📞 Contact Support' }
+    ],
+    { footer: 'Powered by Baileys' }
+)
+
+await sock.sendMessage(jid, quickButtons)
+
+// URL Button
+const urlButton = generateUrlButtonMessage(
+    'Visit our website for more info',
+    [{ displayText: '🌐 Open Website', url: 'https://example.com' }],
+    { title: 'Product Info', footer: 'Click to open' }
+)
+
+await sock.sendMessage(jid, urlButton)
+
+// Copy Code Button (for OTPs, Promos, etc.)
+const copyButton = generateCopyCodeButton(
+    'Your OTP Code is:',
+    '123456',
+    '📋 Copy Code'
+)
+
+await sock.sendMessage(jid, copyButton)
+
+// Combined Buttons (Mix URL, Reply, Copy, Call)
+const combinedButtons = generateCombinedButtons(
+    'Choose an action:',
+    [
+        { type: 'reply', displayText: '🛒 Order Now', id: 'order' },
+        { type: 'url', displayText: '🌐 Website', url: 'https://example.com' },
+        { type: 'call', displayText: '📞 Phone', phoneNumber: '+6281234567890' },
+        { type: 'copy', displayText: '📋 Copy Promo', copyCode: 'PROMO2024' }
+    ],
+    { title: 'Main Menu', footer: 'Baileys' }
+)
+
+await sock.sendMessage(jid, combinedButtons)
+
+// List Message
+const listMessage = generateInteractiveListMessage({
+    title: '📋 Product Menu',
+    buttonText: 'View Menu',
+    description: 'Please select a product',
+    footer: 'Powered by Baileys',
+    sections: [
+        {
+            title: 'Food',
+            rows: [
+                { rowId: 'nasi-goreng', title: 'Fried Rice', description: '$2.50' },
+                { rowId: 'mie-goreng', title: 'Fried Noodles', description: '$2.00' }
+            ]
+        },
+        {
+            title: 'Beverages',
+            rows: [
+                { rowId: 'es-teh', title: 'Ice Tea', description: '$0.50' },
+                { rowId: 'kopi', title: 'Coffee', description: '$1.00' }
+            ]
+        }
+    ]
+})
+
+await sock.sendMessage(jid, listMessage)
+```
+
+
+### Rendering Preset Templates
+
+The manager comes out of the box with beautifully designed, ready-to-use templates for common scenarios like Orders, Invoices, Greetings, and Support Tickets. 
+
+```ts
+// Renders the built-in 'invoice' template using the provided data
+const invoiceText = templates.render('invoice', {
+    invoiceNumber: 'INV-111',
+    customerName: 'John Doe',
+    invoiceDate: '2024-01-15',
+    dueDate: '2024-01-30',
+    items: '1x Web Design\n1x Hosting',
+    subtotal: '10,000',
+    tax: '1,000',
+    total: '11,000',
+    // We omit paymentMethod and bankAccount to let them fall back to template default
+})
+
+await sock.sendMessage(jid, { text: invoiceText })
+```
+
+### Custom Templates
+
+You can create entirely custom templates, and define strict parameter variables. 
+
+```ts
+// Registering a Custom Template
+templates.create({
+    name: 'Welcome Message',
+    content: `Hello {{name}}! 👋
+    
+Welcome to {{company}}!
+
+Here are our services:
+{{services}}
+
+Contact: {{phone:0812-3456-7890}}`,
+    category: 'greeting'
+})
+
+// Using it elsewhere in your app
+const welcome = templates.render('welcome_message', {
+    name: 'Budi',
+    company: 'PT Example',
+    services: '- Support\n- Inquiries'
+})
+```
+
+You can iterate through your templates using functions like `templates.getAll()` and `templates.getByCategory('greeting')`, or backup and restore them using `.export()` and `.import(json)`.
+
+---
+
+
+### Sending a Single Contact
+
+```ts
+// 1. Create a contact object quickly
+const contact = quickContact('John Doe', '+1234567890', { 
+    organization: 'Acme Corp',
+    email: 'john@acme.com'
+})
+
+// 2. Send it!
+await sock.sendMessage(jid, createContactCard(contact))
+```
+
+### Sending Multiple Contacts
+
+```ts
+const c1 = quickContact('Alice', '+111111')
+const c2 = quickContact('Bob', '+222222')
+
+await sock.sendMessage(jid, createContactCards([c1, c2]))
+```
+
+### Advanced Contact Generation
+
+If you need full control over the vCard fields (addresses, multiple phones, birthday), you can construct a full `VCardContact` object:
+
+```ts
+import { generateVCard } from '@innovatorssoft/baileys'
+
+const fullContact = {
+    fullName: 'Jane Smith',
+    organization: 'Tech Inc',
+    title: 'Senior Developer',
+    phones: [
+        { number: '+123', type: 'CELL' },
+        { number: '+456', type: 'WORK', label: 'Office' }
+    ],
+    emails: [
+        { email: 'jane@tech.inc', type: 'WORK' }
+    ],
+    addresses: [
+        { street: '123 Main St', city: 'NY', country: 'USA' }
+    ],
+    birthday: '1990-01-01',
+    note: 'Met at the conference'
+}
+
+await sock.sendMessage(jid, createContactCard(fullContact))
+```
+
+---
+
 
 ### Keep Message
 ```ts
@@ -1268,14 +1734,14 @@ await sock.sendMessage(
                 })
             },
             {
-                name: 'open_webview',
-                buttonParamsJson: JSON.stringify({
-                    title: 'Follow Me!',
-                    link: {
-                        in_app_webview: true, // or false
-                        url: 'https://whatsapp.com/channel/0029Vag9VSI2ZjCocqa2lB1y'
-                    }
-                })
+               name: 'open_webview',
+               buttonParamsJson: JSON.stringify({
+                  title: 'Follow Me!',
+                  link: {
+                      in_app_webview: true, // or false
+                      url: 'https://whatsapp.com/channel/0029Vag9VSI2ZjCocqa2lB1y'
+                  }
+               })
             },
             {
                name: 'mpm',
@@ -1421,19 +1887,20 @@ await sock.sendMessage(
                })
            }
        ], 
-       hasMediaAttachment: false // or true
+       hasMediaAttachment: false // or true, 
+       viewOnce: true
     }
 )
 
 // If you want to use an location
 await sock.sendMessage(
     jid, 
-    {
-        location: { 
-          degressLatitude: -0,
-          degressLongitude: 0,
-          name: 'Hi'
-       },
+    { 
+       location: {
+         degressLatitude: -0, 
+         degressLongitude: 0,
+         name: 'Hi'
+       },    
        caption: 'Body',
        title: 'Title', 
        subtitle: 'Subtitle', 
@@ -1448,6 +1915,7 @@ await sock.sendMessage(
            }
        ], 
        hasMediaAttachment: false // or true
+       viewOnce: true
     }
 )
 
@@ -1483,6 +1951,7 @@ await sock.sendMessage(
             }
         ], 
         hasMediaAttachment: false // or true
+        viewOnce: true
     }
 )
 ```
@@ -2010,6 +2479,45 @@ await sock.sendMessage(
 )
 ```
 
+#### HD Image Message
+Send images at full, uncompressed quality. WhatsApp normally compresses images; passing `hd: true` skips compression and generates a higher-quality preview thumbnail (320 px wide, 85 % quality instead of the default 32 px / 50 %).
+
+```ts
+await sock.sendMessage(
+    id,
+    {
+        image: {
+            url: './Media/ma_img.png'
+        },
+        caption: 'High quality photo',
+        hd: true   // send without compression
+    }
+)
+
+// Works with Buffer and stream too
+await sock.sendMessage(
+    id,
+    {
+        image: fs.readFileSync('./Media/ma_img.png'),
+        hd: true
+    }
+)
+```
+
+#### HD Video Message
+```ts
+await sock.sendMessage(
+    id,
+    {
+        video: {
+            url: './Media/ma_video.mp4'
+        },
+        caption: 'HD video',
+        hd: true   // higher-quality 320×180 preview thumbnail
+    }
+)
+```
+
 ### Album Message
 ```ts
 await sock.sendMessage(
@@ -2173,6 +2681,94 @@ await sock.sendPresenceUpdate('available', jid)
 
 > [!NOTE]
 > If a desktop client is active, WA doesn't send push notifications to the device. If you would like to receive said notifications -- mark your Baileys client offline using `sock.sendPresenceUpdate('unavailable')`
+
+### Typing Indicator
+
+Use `createTypingIndicator` for manual or standalone typing/recording presence control — without needing the auto-reply system.
+
+```ts
+import { createTypingIndicator } from '@innovatorssoft/baileys'
+
+const typing = createTypingIndicator(
+    (jid, presence) => sock.sendPresenceUpdate(presence, jid)
+)
+```
+
+```ts
+// Show "typing..." for 2 s, then send the message — all in one call
+const sent = await typing.simulateTyping(jid, 2000, () =>
+    sock.sendMessage(jid, { text: 'Here is your answer! ✅' })
+)
+
+// Manual start (auto-pauses after 5 s)
+await typing.startTyping(jid, { duration: 5000 })
+
+// Manual stop
+await typing.stopTyping(jid)
+
+// Voice note recording indicator
+await typing.startRecording(jid, { duration: 3000 })
+
+// Stop all active indicators (e.g. on socket close)
+await typing.stopAll()
+```
+
+> [!TIP]
+> `simulateTyping(jid, duration, callback)` is the simplest way to fake a human delay before any action — just wrap your `sendMessage` call in the callback.
+
+### Native `sendPresenceUpdate` Simulation
+
+Alternatively, the socket's core `sendPresenceUpdate` function now natively supports blocking simulation:
+
+```ts
+// Block the script, sending 'composing' for 2.5s, then automatically sending 'paused'.
+await sock.sendPresenceUpdate('composing', jid, {
+    simulateTyping: true,
+    typingDuration: 2500 // (default: 1500)
+})
+
+// Now send your message
+await sock.sendMessage(jid, { text: 'Hello!' })
+```
+
+---
+
+### Read Receipt Control
+
+A centralized tracker for handling read receipts (blue ticks) programmatically. It allows you to configure automatic delays (simulating human reaction time), configure global enable/disable states, and completely block specific JIDs from receiving blue ticks.
+
+```ts
+import { createReadReceiptController } from '@innovatorssoft/baileys'
+
+const readReceipts = createReadReceiptController(
+    (jid, participant, messageIds) => sock.readMessages([{ remoteJid: jid, id: messageIds[0] }]),
+    {
+        enabled: true,
+        readDelay: 1000, // 1 second artificial delay
+        excludeJids: ['blocked@s.whatsapp.net']
+    }
+)
+
+// Mark as read manually inside an event listener!
+// This respects the disabled state, excluded JIDs, and the `readDelay`.
+await readReceipts.markRead(jid, participant, ['messageId123'])
+
+// Force read (bypasses all rules and config!)
+await readReceipts.forceMarkRead(jid, participant, ['messageId123'])
+
+// Global toggle 
+readReceipts.disable() // Stop sending read receipts globally
+readReceipts.enable()  
+
+// Update config dynamically
+readReceipts.setConfig({
+    enabled: true,
+    readDelay: 2000
+})
+```
+
+---
+
 
 ## Modifying Chats
 
@@ -2353,6 +2949,49 @@ sock.ev.on('presence.update', console.log)
 await sock.presenceSubscribe(jid) 
 ```
 
+### Message Search
+
+Search and filter stored arrays of messages using a fast client-side indexing manager.
+
+```ts
+import { createMessageSearch, searchMessages } from '@innovatorssoft/baileys'
+
+// Initialize the search manager
+const search = createMessageSearch()
+
+// Add bulk WAMessages to index
+// Duplicate Message IDs are safely ignored.
+search.addMessages(chatMessages)
+
+// Search by text
+const results = search.search('product price', {
+    caseSensitive: false,
+    limit: 20,
+    messageTypes: ['text', 'image'], // Automatically searches inside image captions!
+    fromDate: new Date('2024-01-01') // Filter by date securely
+})
+
+// Output is mapped and scored by Relevance
+for (const result of results) {
+    console.log(`Found snippet: "${result.matchedText}"`)
+    console.log(`Relevance Score: ${result.relevanceScore}`)
+    console.log(`Message Object:`, result.message)
+}
+
+// You can also search explicitly using Regex:
+const regexResults = search.searchRegex(/order\s*#?\d+/i)
+
+// Quick search via functional call, without keeping a manager:
+const quickResults = searchMessages(
+    rawMessagesArray, 
+    'keyword', 
+    { jid: '12345678@s.whatsapp.net', fromMe: false }
+)
+```
+
+---
+
+
 ## Change Profile
 
 ### Change Profile Status
@@ -2372,6 +3011,34 @@ await sock.updateProfileName('My name')
 ```ts
 await sock.updateProfilePicture(jid, { url: './new-profile-picture.jpeg' })
 ```
+
+### Panoramic (Wide) Profile Picture
+Set a full-width banner/panorama profile picture **without square cropping**. WhatsApp shows the full wide image for users with updated clients.
+
+Two images are automatically generated from the same source:
+- A **square crop** (640×640) for the circle avatar / thumbnail
+- A **full-width panorama** (up to `maxWidth` px, aspect-ratio preserved) for the wide banner slot
+
+```ts
+// Basic usage — no cropping, displayed as a wide banner
+await sock.updatePanoramaProfilePicture(myJid, { url: './panorama.jpg' })
+
+// With custom options
+await sock.updatePanoramaProfilePicture(myJid, { url: './wide-photo.jpg' }, {
+    maxWidth: 1080,   // Maximum width in pixels (default: 720)
+    quality: 90       // JPEG quality 1-100 (default: 80)
+})
+
+// Using a Buffer (e.g. downloaded or generated in memory)
+await sock.updatePanoramaProfilePicture(myJid, fs.readFileSync('./banner.jpg'))
+
+// Set a wide group profile banner
+await sock.updatePanoramaProfilePicture(groupJid, { url: './group-banner.jpg' })
+
+// Regular square profile picture still works unchanged
+await sock.updateProfilePicture(myJid, { url: './square-photo.jpg' })
+```
+
 ### Remove display picture (groups too)
 ```ts
 await sock.removeProfilePicture(jid)
@@ -2593,6 +3260,76 @@ const bList = await sock.getBroadcastListInfo('1234@broadcast')
 console.log (`list name: ${bList.name}, recps: ${bList.recipients}`)
 ```
 
+### Status / Story Posting
+
+Post rich text, image, video, and audio statuses easily using `StatusHelper`.
+
+```ts
+import { 
+    StatusHelper, 
+    STATUS_BROADCAST_JID,
+    STATUS_BACKGROUNDS,
+    STATUS_FONTS
+} from '@innovatorssoft/baileys'
+```
+
+### Text Status
+
+You can use the built-in background colors and fonts.
+
+```ts
+// 1. A simple text status on a green background
+await sock.sendMessage(
+    STATUS_BROADCAST_JID, 
+    StatusHelper.text('Hello World! 🌍', STATUS_BACKGROUNDS.solid.green)
+)
+
+// 2. A fully customized text status
+import { createTextStatus } from '@innovatorssoft/baileys'
+
+await sock.sendMessage(STATUS_BROADCAST_JID, createTextStatus({
+    text: 'Custom styled status!',
+    backgroundColor: STATUS_BACKGROUNDS.gradient.sunset[0],
+    font: STATUS_FONTS.DANCING,
+    textColor: '#FFFFFF'
+}))
+```
+
+### Media Status
+
+Generate the correct status object from buffers or URLs.
+
+```ts
+// Image Status
+const imageBuffer = fs.readFileSync('./my-photo.jpg')
+await sock.sendMessage(
+    STATUS_BROADCAST_JID, 
+    StatusHelper.image(imageBuffer, 'Beautiful day! ☀️')
+)
+
+// Video Status
+const videoBuffer = fs.readFileSync('./my-video.mp4')
+await sock.sendMessage(
+    STATUS_BROADCAST_JID, 
+    StatusHelper.video(videoBuffer, 'Check this out! 🎬')
+)
+
+// GIF Status (Video played on loop without sound)
+await sock.sendMessage(
+    STATUS_BROADCAST_JID, 
+    StatusHelper.gif(gifBuffer, 'Animated! 🎭')
+)
+
+// Voice Note / Audio Status
+await sock.sendMessage(
+    STATUS_BROADCAST_JID, 
+    StatusHelper.voiceNote(audioBuffer)
+)
+```
+
+---
+
+
 ## Writing Custom Functionality
 Baileys is written with custom functionality in mind. Instead of forking the project & re-writing the internals, you can simply write your own extensions.
 
@@ -2671,3 +3408,5 @@ sock.ws.on('CB:edge_routing,id:abcd,routing_info', (node: BinaryNode) => { })
 - [Original baileys](https://github.com/WhiskeySockets/baileys)
 - [Special thanks to](https://github.com/Itsukichann/Baileys)
 - [Follow Innovators Soft](https://facebook.com/innovatorssoft)
+
+---

@@ -18,7 +18,7 @@ export declare const getRawMediaUploadData: (media: WAMediaUpload, mediaType: Me
 /** generates all the keys required to encrypt/decrypt & sign a media message */
 export declare function getMediaKeys(buffer: Uint8Array | string | null | undefined, mediaType: MediaType): MediaDecryptionKeyInfo
 
-export declare const extractImageThumb: (bufferOrFilePath: Readable | Buffer | string, width?: number) => Promise<{
+export declare const extractImageThumb: (bufferOrFilePath: Readable | Buffer | string, widthOrHdMode?: number | boolean) => Promise<{
     buffer: Buffer
     original: {
         width: number | undefined
@@ -30,6 +30,19 @@ export declare const encodeBase64EncodedStringForUpload: (b64: string) => string
 
 export declare const generateProfilePicture: (mediaUpload: WAMediaUpload) => Promise<{
     img: Buffer
+}>
+
+/**
+ * Generate a panorama/wide profile picture without cropping.
+ * @returns img - Square crop for circle/thumbnail display
+ * @returns fullImg - Full-width panorama for wide/banner display
+ */
+export declare const generatePanoramaProfilePicture: (
+    mediaUpload: WAMediaUpload,
+    options?: { maxWidth?: number; quality?: number }
+) => Promise<{
+    img: Buffer
+    fullImg: Buffer
 }>
 
 /** gets the SHA256 of the given media message */
@@ -63,6 +76,8 @@ export declare const getStream: (item: WAMediaUpload, opts?: AxiosRequestConfig)
 /** generates a thumbnail for a given media, if required */
 export declare function generateThumbnail(file: string, mediaType: 'video' | 'image', options: {
     logger?: Logger
+    /** HD mode - generate higher quality thumbnail (320px, 85% quality) */
+    hdMode?: boolean
 }): Promise<{
     thumbnail: string | undefined
     originalImageDimensions: {

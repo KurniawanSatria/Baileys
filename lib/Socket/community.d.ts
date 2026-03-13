@@ -53,7 +53,7 @@ export declare const makeCommunitiesSocket: (config: SocketConfig) => {
     }>
     upsertMessage: (msg: proto.IWebMessageInfo, type: import("../Types").MessageUpsertType) => Promise<void>
     appPatch: (patchCreate: import("../Types").WAPatchCreate) => Promise<void>
-    sendPresenceUpdate: (type: import("../Types").WAPresence, toJid?: string | undefined) => Promise<void>
+    sendPresenceUpdate: (type: import("../Types").WAPresence, toJid?: string | undefined, options?: { simulateTyping?: boolean; typingDuration?: number }) => Promise<void>
     presenceSubscribe: (toJid: string, tcToken?: Buffer | undefined) => Promise<void>    
     getLidUser: (jid: string) => Promise<{
     	lid: string
