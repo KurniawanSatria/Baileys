@@ -57,7 +57,7 @@ jobs:
 
           # Create new branch, commit, and push
           git checkout -b "$TEMP_BRANCH"
-          git add lib/Defaults/baileys-version.json
+          git add .
           git commit -m "chore: update WhatsApp Web version"
           git push origin "$TEMP_BRANCH"
 
