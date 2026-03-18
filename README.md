@@ -1582,7 +1582,9 @@ await sock.sendMessage(
         footer: 'Footer Message',
         cards: [
            {
-              image: { url: 'https://example.com/jdbenkksjs.jpg' }, // or buffer
+              image: { url: 'https://example.com/jdbenkksjs.jpg' }, // URL object
+              // image: Buffer, // or Buffer
+              // image: './path/to/image.jpg', // or local file path string
               title: 'Title Cards',
               body: 'Body Cards',
               footer: 'Footer Cards',
@@ -1604,7 +1606,9 @@ await sock.sendMessage(
               ]
            },
            {
-              video: { url: 'https://example.com/jdbenkksjs.mp4' }, // or buffer
+              video: { url: 'https://example.com/jdbenkksjs.mp4' }, // URL object
+              // video: fs.readFileSync('./video.mp4'), // or Buffer
+              // video: './path/to/video.mp4', // or local file path string
               title: 'Title Cards',
               body: 'Body Cards',
               footer: 'Footer Cards',
@@ -1629,6 +1633,7 @@ await sock.sendMessage(
     }
 )
 ```
+
 
 ### Buttons Template Message
 ```ts

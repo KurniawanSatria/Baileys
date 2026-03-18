@@ -41,11 +41,7 @@ export declare const WAMessageStubType = proto.WebMessageInfo.StubType
 
 export declare const WAMessageStatus = proto.WebMessageInfo.Status
 
-export type WAMediaUpload = Buffer | {
-    url: URL | string
-} | {
-    stream: Readable
-}
+export type WAMediaUpload = Buffer | { url: URL | string } | { stream: Readable } | string
 
 /** Set of message types that are supported by the library */
 export type MessageType = keyof proto.Message
