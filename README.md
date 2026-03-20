@@ -3267,7 +3267,9 @@ console.log (`list name: ${bList.name}, recps: ${bList.recipients}`)
 Post rich text, image, video, and audio statuses easily using `StatusHelper`.
 
 > [!IMPORTANT]
-> In Multi-Device mode, statuses sent to `status@broadcast` are only visible to contacts included in the `statusJidList`. The new `StatusHelper.send()` handles this automatically.
+> - **Multi-Device mode**: Statuses sent to `status@broadcast` are only visible to contacts included in the `statusJidList`.
+> - **Groups**: You can now send statuses directly to group JIDs by including them in the `jidList`.
+> `StatusHelper.send()` handles both cases automatically.
 
 ```ts
 import { 
@@ -3276,8 +3278,11 @@ import {
     STATUS_FONTS
 } from '@innovatorssoft/baileys'
 
-// JIDs of contacts who should see the status
-const myContacts = ['12345@s.whatsapp.net', '67890@s.whatsapp.net']
+// JIDs of contacts or groups who should see the status
+const jidList = [
+    '12345@s.whatsapp.net', // Individual contact
+    '12036302@g.us'         // Group status! 🚀
+]
 ```
 
 ### Text Status
@@ -3287,7 +3292,7 @@ You can use the built-in background colors and fonts.
 ```ts
 // 1. A simple text status on a green background
 const status = StatusHelper.text('Hello World! 🌍', STATUS_BACKGROUNDS.solid.purple)
-await StatusHelper.send(sock, status, myContacts)
+await StatusHelper.send(sock, status, jidList)
 
 // 2. A fully customized text status
 import { createTextStatus } from '@innovatorssoft/baileys'
@@ -3298,7 +3303,7 @@ const customStatus = createTextStatus({
     font: STATUS_FONTS.DANCING,
     textColor: '#FFFFFF'
 })
-await StatusHelper.send(sock, customStatus, myContacts)
+await StatusHelper.send(sock, customStatus, jidList)
 ```
 
 ### Media Status
@@ -3308,17 +3313,17 @@ Generate and send media statuses with captions.
 ```ts
 // Image Status
 const imageBuffer = fs.readFileSync('./my-photo.jpg')
-await StatusHelper.send(sock, StatusHelper.image(imageBuffer, 'Beautiful day! ☀️'), myContacts)
+await StatusHelper.send(sock, StatusHelper.image(imageBuffer, 'Beautiful day! ☀️'), jidList)
 
 // Video Status
 const videoBuffer = fs.readFileSync('./my-video.mp4')
-await StatusHelper.send(sock, StatusHelper.video(videoBuffer, 'Check this out! 🎬'), myContacts)
+await StatusHelper.send(sock, StatusHelper.video(videoBuffer, 'Check this out! 🎬'), jidList)
 
 // GIF Status (Video played on loop without sound)
-await StatusHelper.send(sock, StatusHelper.gif(gifBuffer, 'Animated! 🎭'), myContacts)
+await StatusHelper.send(sock, StatusHelper.gif(gifBuffer, 'Animated! 🎭'), jidList)
 
 // Voice Note / Audio Status
-await StatusHelper.send(sock, StatusHelper.voiceNote(audioBuffer), myContacts)
+await StatusHelper.send(sock, StatusHelper.voiceNote(audioBuffer), jidList)
 ```
 
 ---
