@@ -209,12 +209,12 @@ WhatsApp provides a multi-device API that allows Baileys to be authenticated as 
 > **[Here](#example-to-start) is a simple example of event handling**
 
 > [!TIP]
-> **You can see all supported socket configs [here](https://baileys.whiskeysockets.io/types/SocketConfig.html) (Recommended)**
+> **You can see all supported socket configs [here](https://innovatorssoftpk.com/docs/important-notes-about-socket-config) (Recommended)**
 
 ### Starting socket with **QR-CODE**
 
 > [!TIP]
-> You can customize browser name if you connect with **QR-CODE**, with `Browser` constant, we have some browsers config, **see [here](https://baileys.whiskeysockets.io/types/BrowsersMap.html)**
+> You can customize browser name if you connect with **QR-CODE**, with `Browser` constant, we have some browsers config, **see [here](https://innovatorssoftpk.com/docs/important-notes-about-socket-config)**
 
 ```ts
 import makeWASocket from '@innovatorssoft/baileys'
@@ -334,7 +334,7 @@ sock.ev.on('creds.update', saveCreds)
 They're all nicely typed up, so you shouldn't have any issues with an Intellisense editor like VS Code.
 
 > [!IMPORTANT]
-> **The events are [these](https://baileys.whiskeysockets.io/types/BaileysEventMap.html)**, it's important you see all events
+> **The events are [these](https://innovatorssoftpk.com/docs/handling-events)**, it's important you see all events
 
 You can listen to these events like this:
 ```ts
@@ -416,7 +416,7 @@ const connectAuth = async() => {
     })
 }
   await client.connect()
-  const collection = client.db("@itsockchann").collection("sessions")
+  const collection = client.db("@innovatorssoftn").collection("sessions")
   return collection
 }
 
@@ -440,7 +440,7 @@ sock.ev.on('creds.update', saveCreds)
 import pino from "pino"
 import { makeInMemoryStore, getAggregateVotesInPollMessage } from '@innovatorssoft/baileys'
 
-const logger = pino({ timestamp: () => `,"time":"${new Date().toJSON()}"` }).child({ class: "@Itsockchann" })
+const logger = pino({ timestamp: () => `,"time":"${new Date().toJSON()}"` }).child({ class: "@innovatorssoftn" })
 logger.level = "fatal"
 const store = makeInMemoryStore({ logger })
 
@@ -812,8 +812,8 @@ sock.ev.on('messages.update', (updates) => {
 ## Sending Messages
 
 - Send all types of messages with a single function
-    - **[Here](https://baileys.whiskeysockets.io/types/AnyMessageContent.html) you can see all message contents supported, like text message**
-    - **[Here](https://baileys.whiskeysockets.io/types/MiscMessageGenerationOptions.html) you can see all options supported, like quote message**
+    - **[Here](https://innovatorssoftpk.com/docs/sending-messages) you can see all message contents supported, like text message**
+    - **[Here](https://innovatorssoftpk.com/docs/sending-messages) you can see all options supported, like quote message**
 
     ```ts
     const jid: string
@@ -920,7 +920,7 @@ await sock.sendMessage(
 ```
 
 #### Forward Messages
-- You need to have message object, can be retrieved from [store](#implementing-a-data-store) or use a [message](https://baileys.whiskeysockets.io/types/WAMessage.html) object
+- You need to have message object, can be retrieved from [store](#implementing-a-data-store) or use a [message] object
 ```ts
 const msg = getMessageFromStore() // implement this on your end
 await sock.sendMessage(jid, { forward: msg, force: true or number }) // WA forward the message!
@@ -965,7 +965,7 @@ await sock.sendMessage(
     id,
     { 
         contacts: { 
-            displayName: 'Itsockchann', 
+            displayName: 'innovatorssoftn', 
             contacts: [{ vcard }] 
         }
     }
@@ -1035,7 +1035,7 @@ await sock.sendMessage(jid, createContactCard(fullContact))
 
 
 #### Reaction Message
-- You need to pass the key of message, you can retrieve from [store](#implementing-a-data-store) or use a [key](https://baileys.whiskeysockets.io/types/WAMessageKey.html) object
+- You need to pass the key of message, you can retrieve from [store](#implementing-a-data-store) or use a [key] object
 ```ts
 await sock.sendMessage(
     jid,
@@ -1049,7 +1049,7 @@ await sock.sendMessage(
 ```
 
 #### Pin Message
-- You need to pass the key of message, you can retrieve from [store](#implementing-a-data-store) or use a [key](https://baileys.whiskeysockets.io/types/WAMessageKey.html) object
+- You need to pass the key of message, you can retrieve from [store](#implementing-a-data-store) or use a [key]object
 
 - Time can be:
 
@@ -1286,7 +1286,7 @@ await sock.sendMessage(
     {
         stickerPack: {
             name: 'Hiii', 
-            publisher: 'By Itsockchann', 
+            publisher: 'By innovatorssoftn', 
             description: 'Hello', 
             cover: Buffer, // Image buffer
             stickers: [{
@@ -1631,41 +1631,6 @@ await sock.sendMessage(
     }
 )
 ```
-
-
-### Buttons Template Message
-```ts
-// This no longer works
-await sock.sendMessage(
-    jid,
-    {
-       text: 'This is a template message!', 
-       footer: 'Hello World!', 
-       templateButtons: [{
-           index: 1,
-           urlButton: {
-                displayText: 'Follow Me', 
-                url: 'https://whatsapp.com/channel/0029Vag9VSI2ZjCocqa2lB1y'
-             }, 
-         }, 
-         {
-            index: 2,
-            callButton: {
-                displayText: 'Call Me!', 
-                phoneNumber: '628xxx'
-            }, 
-        }, 
-        {
-           index: 3,
-           quickReplyButton: {
-                displayText: 'This is a reply, just like normal buttons!', 
-                id: 'id-like-buttons-message'
-            }, 
-       }]
-    }
-)
-```
-
 ### Buttons Interactive Message
 ```ts
 await sock.sendMessage(
@@ -1695,7 +1660,7 @@ await sock.sendMessage(
                 name: 'cta_copy',
                 buttonParamsJson: JSON.stringify({
                     display_text: 'Click Me!',
-                    copy_code: 'https://whatsapp.com/channel/0029Vag9VSI2ZjCocqa2lB1y'
+                    copy_code: '1234567890'
                 })
             },
             {
@@ -1771,7 +1736,7 @@ await sock.sendMessage(
                     flow_message_version: '3', 
                     flow_token: '1:1307913409923914:293680f87029f5a13d1ec5e35e718af3',
                     flow_id: '1307913409923914',
-                    flow_cta: 'Itsockchann kawaii >\\<', 
+                    flow_cta: 'innovatorssoftn kawaii >\\<', 
                     flow_action: 'navigate', 
                     flow_action_payload: {
                     	screen: 'QUESTION_ONE',
@@ -1934,7 +1899,7 @@ await sock.sendMessage(
             description: 'Description',
             currencyCode: 'IDR',
             priceAmount1000: '283xxx',
-            retailerId: 'Itsockchann',
+            retailerId: 'innovatorssoftn',
             url: 'https://example.com',
             productImageCount: 1
         },
@@ -1971,8 +1936,8 @@ await sock.sendMessage(
                 payment_settings: [{ 
                    type: "pix_static_code", 
                    pix_static_code:  { 
-                      merchant_name: 'itsockchann kawaii >\\\\\\<', 
-                      key: 'example@itsockchan.com', 
+                      merchant_name: 'innovatorssoftn kawaii >\\\\\\<', 
+                      key: 'example@innovatorssoft.com', 
                       key_type: 'EMAIL' // PHONE || EMAIL || CPF || EVP 
                    } 
                }] 
@@ -2015,7 +1980,7 @@ await sock.sendMessage(
                     order_type: 'PAYMENT_REQUEST', 
                     items: [{
                         retailer_id: 'your_retailer_id', 
-                        name: 'Itsockchann Kawaii >\\\<', 
+                        name: 'innovatorssoftn Kawaii >\\\<', 
                         amount: {
                             value: '999999999', 
                             offset: '100'
@@ -2023,7 +1988,7 @@ await sock.sendMessage(
                         quantity: '1', 
                     }]
                 }, 
-                additional_note: 'Itsockchann Kawaii >\\\<', 
+                additional_note: 'innovatorssoftn Kawaii >\\\<', 
                 native_payment_methods: [], 
                 share_payment_status: false
             }) 
@@ -2197,7 +2162,7 @@ await sock.sendMessage(
             description: 'Description',
             currencyCode: 'IDR',
             priceAmount1000: '283xxx',
-            retailerId: 'Itsockchann',
+            retailerId: 'innovatorssoftn',
             url: 'https://example.com',
             productImageCount: 1
         },
@@ -2334,7 +2299,7 @@ await sock.sendMessage(
             description: 'Description',
             currencyCode: 'IDR',
             priceAmount1000: '283xxx',
-            retailerId: 'Itsockchann',
+            retailerId: 'innovatorssoftn',
             url: 'https://example.com',
             productImageCount: 1
         },
@@ -2398,7 +2363,7 @@ await sock.sendMessage(
 Sending media (video, stickers, images) is easier & more efficient than ever.
 
 > [!NOTE]
-> In media messages, you can pass `{ stream: Stream }` or `{ url: Url }` or `Buffer` directly, you can see more [here](https://baileys.whiskeysockets.io/types/WAMediaUpload.html)
+> In media messages, you can pass `{ stream: Stream }` or `{ url: Url }` or `Buffer` directly
 
 - When specifying a media url, Baileys never loads the entire buffer into memory it even encrypts the media as a readable stream.
 
@@ -2527,7 +2492,7 @@ await sock.sendMessage(
     { 
         album: [{
         	image: {
-        		url: 'https://example.com/itsockchan.jpg'
+        		url: 'https://example.com/innovatorssoft.jpg'
         	}, 
         	caption: 'Hay'
         }, {
@@ -2535,7 +2500,7 @@ await sock.sendMessage(
         	caption: 'Hay'
         }, {
         	video: {
-        		url: 'https://example.com/itsockchan.mp4'
+        		url: 'https://example.com/innovatorssoft.mp4'
         	}, 
         	caption: 'Hay'
         }, {
@@ -2658,7 +2623,7 @@ await sock.rejectCall(callId, callFrom)
 ## Send States in Chat
 
 ### Reading Messages
-- A set of message [keys](https://baileys.whiskeysockets.io/types/WAMessageKey.html) must be explicitly marked read now.
+- A set of message keys must be explicitly marked read now.
 - You cannot mark an entire 'chat' read as it were with Baileys Web.
 This means you have to keep track of unread messages.
 
@@ -2673,7 +2638,7 @@ On a `WAMessage`, the `messageID` can be accessed using ```messageID = message.k
 
 ### Update Presence
 
-- ``` presence ``` can be one of [these](https://baileys.whiskeysockets.io/types/WAPresence.html)
+- ``` presence ```
 - The presence expires after about 10 seconds.
 - This lets the person/group with `jid` know whether you're online, offline, typing etc. 
 
@@ -3008,7 +2973,7 @@ await sock.updateProfileName('My name')
 - To change your display picture or a group's
 
 > [!NOTE]
-> Like media messages, you can pass `{ stream: Stream }` or `{ url: Url }` or `Buffer` directly, you can see more [here](https://baileys.whiskeysockets.io/types/WAMediaUpload.html)
+> Like media messages, you can pass `{ stream: Stream }` or `{ url: Url }` or `Buffer` directly
 
 ```ts
 await sock.updateProfilePicture(jid, { url: './new-profile-picture.jpeg' })
@@ -3248,8 +3213,8 @@ await sock.sendMessage(
     }
 )
 ```
-- Message body can be a `extendedTextMessage` or `imageMessage` or `videoMessage` or `voiceMessage`, see [here](https://baileys.whiskeysockets.io/types/AnyRegularMessageContent.html)
-- You can add `backgroundColor` and other options in the message options, see [here](https://baileys.whiskeysockets.io/types/MiscMessageGenerationOptions.html)
+- Message body can be a `extendedTextMessage` or `imageMessage` or `videoMessage` or `voiceMessage`
+- You can add `backgroundColor` and other options in the message options
 - `broadcast: true` enables broadcast mode
 - `statusJidList`: a list of people that you can get which you need to provide, which are the people who will get this status message.
 
@@ -3400,7 +3365,7 @@ sock.ws.on('CB:edge_routing,id:abcd,routing_info', (node: BinaryNode) => { })
 ```
 
 > [!NOTE]
-> Also, this repo is now licenced under GPL 3 since it uses [libsignal-node](https://git.questbook.io/backend/service-coderunner/-/merge_requests/1)
+> Also, this repo is now licenced under GPL 3 since it uses [libsignal-node](https://github.com/signalapp/libsignal)
 
 ## Acknowledgements
 
