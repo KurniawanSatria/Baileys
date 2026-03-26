@@ -3367,6 +3367,69 @@ sock.ws.on('CB:edge_routing,id:abcd,routing_info', (node: BinaryNode) => { })
 > [!NOTE]
 > Also, this repo is now licenced under GPL 3 since it uses [libsignal-node](https://github.com/signalapp/libsignal)
 
+## Additional Message Utilities
+
+### Group Status (`groupStatus`)
+
+Post a message as a **group status update**. When `groupStatus: true` is set, the library:
+
+1. Sets `contextInfo.isGroupStatus = true` on the inner message.
+2. Wraps the entire message inside a `groupStatusMessageV2` envelope.
+
+| Parameter      | Type      | Required | Description                        |
+|---------------|-----------|----------|------------------------------------|
+| `groupStatus` | `boolean` | No       | Set to `true` to post as a group status. |
+
+**Returns:** The standard `WAMessage` object, with the content wrapped in `groupStatusMessageV2`.
+
+**Example:**
+
+**Text Status**
+```ts
+await sock.sendMessage(groupJid, {
+    text: 'Hello World!',
+    groupStatus: true
+})
+```
+
+**Image Status**
+```ts
+await sock.sendMessage(groupJid, {
+    image: { url: './photo.jpg' },
+    caption: '👥 Group Status Update!',
+    groupStatus: true
+})
+```
+
+### Interactive as Template (`interactiveAsTemplate`)
+
+Wrap an `interactiveMessage` inside a `templateMessage` envelope. This is needed for platforms or clients that only render template-wrapped interactive content.
+
+| Parameter               | Type      | Required | Description                                                |
+|------------------------|-----------|----------|------------------------------------------------------------|
+| `interactiveAsTemplate`| `boolean` | No       | Set to `true` to rewrap the interactive message.           |
+| `id`                   | `string`  | No       | Custom `templateId`. Defaults to `'template-' + Date.now()`. |
+
+**Returns:** The standard `WAMessage` object, with `interactiveMessage` nested under `templateMessage.interactiveMessageTemplate`.
+
+**Throws:** `Boom` (400) if the built message does not contain an `interactiveMessage`.
+
+**Example:**
+```ts
+await sock.sendMessage(jid, {
+    interactiveMessage: {
+        nativeFlowMessage: {
+            buttons: [{ name: 'quick_reply', buttonParamsJson: '{"display_text":"Click"}' }]
+        },
+        body: { text: 'Hello!' }
+    },
+    interactiveAsTemplate: true,
+    id: 'my-template-001'   // optional custom templateId
+})
+```
+
+---
+
 ## Acknowledgements
 
 - [Original baileys](https://github.com/WhiskeySockets/baileys)
@@ -3374,3 +3437,4 @@ sock.ws.on('CB:edge_routing,id:abcd,routing_info', (node: BinaryNode) => { })
 - [Follow Innovators Soft](https://facebook.com/innovatorssoft)
 
 ---
+
