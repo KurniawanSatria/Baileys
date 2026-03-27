@@ -29,11 +29,7 @@ jobs:
 
       - name: Fetch latest protos from WhatsApp Web
         working-directory: scripts
-        run: node index.js
-
-      - name: Generate JS from proto files
-        working-directory: scripts
-        run: node generate-proto.js
+        run: npm run build
 
       - name: Generate TypeScript declarations
         working-directory: scripts
