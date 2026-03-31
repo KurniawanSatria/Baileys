@@ -36,7 +36,6 @@
     "lint": "eslint src --ext .js,.ts",
     "lint:fix": "yarn lint --fix",
     "prepack": "tsc",
-    "prepare": "tsc",
     "preinstall": "node engine-requirements.js",
     "release": "release-it",
     "test": "jest",
