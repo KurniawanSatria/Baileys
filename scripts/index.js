@@ -95,6 +95,16 @@ async function findAppModules() {
    const version = versions[0];
    console.log(`Current version: 2.3000.${version}`);
 
+   try {
+      const revisionParts = version.split('.').map(Number);
+      const versionContent = { version: [2, 3000, ...revisionParts] };
+      const versionJsonPath = path.resolve(__dirname, '..', 'lib', 'Defaults', 'baileys-version.json');
+      await fs.writeFile(versionJsonPath, JSON.stringify(versionContent, null, 4) + '\n');
+      console.log(`Updated baileys-version.json to [${versionContent.version.join(', ')}]`);
+   } catch (err) {
+      console.error('Failed to update baileys-version.json:', err);
+   }
+
    let bootstrapQRURL = '';
    const clearString = serviceworker.replaceAll('/*BTDS*/', '');
    const URLScript = clearString.match(

@@ -2057,10 +2057,10 @@ message Message {
         optional uint32 fbExperimentId = 1;
     }
     message VideoEndCard {
-        optional string username = 1;
-        optional string caption = 2;
-        optional string thumbnailImageUrl = 3;
-        optional string profilePictureUrl = 4;
+        required string username = 1;
+        required string caption = 2;
+        required string thumbnailImageUrl = 3;
+        required string profilePictureUrl = 4;
     }
     message VideoMessage {
         optional string url = 1;

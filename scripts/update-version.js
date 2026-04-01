@@ -27,26 +27,67 @@ const ROOT_DIR = (0, path_1.join)(__dirname, '..');
 function fetchLatestWaWebVersion() {
     return __awaiter(this, void 0, void 0, function* () {
         try {
-            const defaultHeaders = {
-                'sec-fetch-site': 'none',
-                'user-agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36'
+            const headers = {
+                'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
+                'Sec-Fetch-Dest': 'script',
+                'Sec-Fetch-Mode': 'no-cors',
+                'Sec-Fetch-Site': 'same-origin',
+                'Sec-Ch-Ua': '"Chromium";v="131", "Not_A Brand";v="24"',
+                'Sec-Ch-Ua-Mobile': '?0',
+                'Sec-Ch-Ua-Platform': '"Linux"',
+                'Referer': 'https://web.whatsapp.com/',
+                'Accept': '*/*',
+                'Accept-Language': 'en-US,en;q=0.9',
+                'Accept-Encoding': 'gzip, deflate, br',
             };
-            const response = yield fetch('https://web.whatsapp.com/sw.js', {
-                method: 'GET',
-                headers: defaultHeaders
-            });
-            if (!response.ok) {
-                throw new Error(`Failed to fetch sw.js: ${response.statusText}`);
+            const baseURL = 'https://web.whatsapp.com';
+            
+            // Adding a simple retry mechanism similar to fetchWithRetry in index.js
+            const MAX_RETRIES = 5;
+            const INITIAL_DELAY_MS = 5000;
+            let data = null;
+            
+            for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+                try {
+                    const response = yield fetch(`${baseURL}/sw.js`, { method: 'GET', headers });
+                    if (response.ok) {
+                        data = yield response.text();
+                        break;
+                    }
+                    if (response.status >= 500 && attempt < MAX_RETRIES) {
+                        const delay = INITIAL_DELAY_MS * Math.pow(2, attempt - 1) + Math.random() * 2000;
+                        console.warn(`Attempt ${attempt}/${MAX_RETRIES} got ${response.status} for sw.js. Retrying in ${Math.round(delay / 1000)}s...`);
+                        yield new Promise(r => setTimeout(r, delay));
+                        continue;
+                    }
+                    throw new Error(`HTTP ${response.status}: ${response.statusText} for sw.js`);
+                } catch (err) {
+                    if (attempt < MAX_RETRIES && (err.code === 'ECONNRESET' || err.code === 'ETIMEDOUT' || (err.message && err.message.includes('fetch failed')))) {
+                        const delay = INITIAL_DELAY_MS * Math.pow(2, attempt - 1) + Math.random() * 2000;
+                        console.warn(`Attempt ${attempt}/${MAX_RETRIES} failed: ${err.message}. Retrying in ${Math.round(delay / 1000)}s...`);
+                        yield new Promise(r => setTimeout(r, delay));
+                        continue;
+                    }
+                    throw err;
+                }
             }
-            const data = yield response.text();
-            const regex = /\\?"client_revision\\?":\s*(\d+)/;
-            const match = data.match(regex);
-            if (!(match === null || match === void 0 ? void 0 : match[1])) {
+
+            const versions = [
+                ...data.matchAll(/client_revision\\":([\d\.]+),/g),
+            ].map((r) => r[1]);
+            
+            const clientRevision = versions[0];
+            
+            if (!clientRevision) {
                 throw new Error('Could not find client revision in the fetched content');
             }
-            const clientRevision = match[1];
+            
+            // Splitting by '.' in case there are multiple dot-separated parts in the version
+            // while preserving compatibility with [2, 3000, ...] format requirements.
+            const revisionParts = clientRevision.split('.').map(Number);
+            
             return {
-                version: [2, 3000, +clientRevision],
+                version: [2, 3000, ...revisionParts],
                 isLatest: true
             };
         }

@@ -33,10 +33,10 @@ message GroupHistoryIndividualMessageInfo {
 }
 
 message Citation {
-    optional string title = 1;
-    optional string subtitle = 2;
-    optional string cmsId = 3;
-    optional string imageUrl = 4;
+    required string title = 1;
+    required string subtitle = 2;
+    required string cmsId = 3;
+    required string imageUrl = 4;
 }
 
 message StatusMentionMessage {
@@ -133,7 +133,7 @@ message Reaction {
 }
 
 message UserReceipt {
-    optional string userJid = 1;
+    required string userJid = 1;
     optional int64 receiptTimestamp = 2;
     optional int64 readTimestamp = 3;
     optional int64 playedTimestamp = 4;
@@ -142,7 +142,7 @@ message UserReceipt {
 }
 
 message StatusPSA {
-    optional uint64 campaignId = 44;
+    required uint64 campaignId = 44;
     optional uint64 campaignExpirationTimestamp = 45;
 }
 
@@ -302,7 +302,7 @@ message CommentMetadata {
 }
 
 message WebMessageInfo {
-    optional Protocol.MessageKey key = 1;
+    required Protocol.MessageKey key = 1;
     optional E2E.Message message = 2;
     optional uint64 messageTimestamp = 3;
     optional Status status = 4;
