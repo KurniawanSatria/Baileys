@@ -95,6 +95,7 @@ async function findAppModules() {
    const version = versions[0];
    console.log(`Current version: 2.3000.${version}`);
 
+   // auto update baileys-version.json
    try {
       const revisionParts = version.split('.').map(Number);
       const versionContent = { version: [2, 3000, ...revisionParts] };
@@ -312,9 +313,9 @@ async function findAppModules() {
                      const unwrapBinaryOr = (n) =>
                         n.type === 'BinaryExpression' && n.operator === '|'
                            ? [].concat(
-                                unwrapBinaryOr(n.left),
-                                unwrapBinaryOr(n.right)
-                             )
+                              unwrapBinaryOr(n.left),
+                              unwrapBinaryOr(n.right)
+                           )
                            : [n];
 
                      // find type and flags
@@ -365,7 +366,7 @@ async function findAppModules() {
                            if (!type) {
                               console.warn(
                                  `unable to find reference of alias '${elements[2].name}'` +
-                                    currLoc
+                                 currLoc
                               );
                            }
                         } else if (elements[2].type === 'MemberExpression') {
@@ -388,14 +389,14 @@ async function findAppModules() {
                               crossRef &&
                               crossRef.module !== '$InternalEnum' &&
                               modulesInfo[crossRef.module].identifiers[
-                                 rename(elements[2].property.name)
+                              rename(elements[2].property.name)
                               ]
                            ) {
                               type = rename(elements[2].property.name);
                            } else {
                               console.warn(
                                  `unable to find reference of alias to other module '${elements[2].object.name}' or to message ${elements[2].property.name} of this module` +
-                                    currLoc
+                                 currLoc
                               );
                            }
                         }
@@ -498,8 +499,7 @@ async function findAppModules() {
             // }
 
             ret.push(
-               `${
-                  info.flags.join(' ') + (info.flags.length === 0 ? '' : ' ')
+               `${info.flags.join(' ') + (info.flags.length === 0 ? '' : ' ')
                }${typeName} ${info.name} = ${info.id}${info.packed || ''};`
             );
             return ret;
@@ -653,9 +653,8 @@ async function findAppModules() {
          .map((proto) => `import "../${proto}/${proto}.proto";`)
          .join('\n')
          .trim();
-      const decodedProtoStr = `syntax = "proto3";\npackage ${protoName};\n\n${
-         imports ? imports + '\n\n' : ''
-      }${decodedProto.join('\n\n')}`;
+      const decodedProtoStr = `syntax = "proto3";\npackage ${protoName};\n\n${imports ? imports + '\n\n' : ''
+         }${decodedProto.join('\n\n')}`;
       const destinationPath = path.join(dirName, protoName + '.proto');
 
       await fs.writeFile(destinationPath, decodedProtoStr);
