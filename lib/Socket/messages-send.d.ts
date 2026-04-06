@@ -24,6 +24,7 @@ export declare const makeMessagesSocket: (config: SocketConfig) => {
     profilePictureUrl: (jid: string) => Promise<string>
     getUSyncDevices: (jids: string[], useCache: boolean, ignoreZeroDevices: boolean) => Promise<JidWithDevice[]>
     getEphemeralGroup: (jid: string) => Promise<number>
+    updateMemberLabel: (jid: string, memberLabel: string) => Promise<string>
     updateMediaMessage: (message: proto.IWebMessageInfo) => Promise<proto.IWebMessageInfo>
     sendStatusMentions: (content: import("../Types").WAProto.IMessage, jid: string, Private?: boolean) => Promise<string>
     sendMessage: (jid: string, content: AnyMessageContent, options?: MiscMessageGenerationOptions) => Promise<proto.WebMessageInfo | undefined>

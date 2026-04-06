@@ -181,6 +181,7 @@ import makeWASocket from '@innovatorssoft/baileys'
     - [Get All Participating Groups Metadata](#get-all-participating-groups-metadata)
     - [Toggle Ephemeral](#toggle-ephemeral)
     - [Change Add Mode](#change-add-mode)
+    - [Update Member Label](#update-member-label)
 - [Privacy](#privacy)
     - [Block/Unblock User](#blockunblock-user)
     - [Get Privacy Settings](#get-privacy-settings)
@@ -3126,6 +3127,15 @@ await sock.groupToggleEphemeral(jid, 86400)
 await sock.groupMemberAddMode(
     jid,
     'all_member_add' // or 'admin_add'
+)
+```
+
+### Update Member Label
+- Updates a specific member's custom label/tag within a group.
+```ts
+await sock.updateMemberLabel(
+    groupJid, // must be a group JID
+    'VIP Member' // string label, maximum 30 characters
 )
 ```
 
