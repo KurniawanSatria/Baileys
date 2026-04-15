@@ -1530,6 +1530,7 @@ message Message {
             optional int32 onDemandMsgCount = 4;
             optional int64 oldestMsgTimestampMs = 5;
             optional string accountLid = 6;
+            optional bool supportInlineResponse = 7;
         }
         message PlaceholderMessageResendRequest {
             optional Protocol.MessageKey messageKey = 1;
@@ -2057,10 +2058,10 @@ message Message {
         optional uint32 fbExperimentId = 1;
     }
     message VideoEndCard {
-        required string username = 1;
-        required string caption = 2;
-        required string thumbnailImageUrl = 3;
-        required string profilePictureUrl = 4;
+        optional string username = 1;
+        optional string caption = 2;
+        optional string thumbnailImageUrl = 3;
+        optional string profilePictureUrl = 4;
     }
     message VideoMessage {
         optional string url = 1;

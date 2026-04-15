@@ -145,7 +145,7 @@ message SyncActionValue {
         optional bool isSent = 1;
     }
     message BroadcastListParticipant {
-        required string lidJid = 1;
+        optional string lidJid = 1;
         optional string pnJid = 2;
     }
     message BusinessBroadcastAssociationAction {
@@ -207,14 +207,14 @@ message SyncActionValue {
         optional bool isCtwaPerCustomerDataSharingEnabled = 1;
     }
     message CustomPaymentMethod {
-        required string credentialId = 1;
-        required string country = 2;
-        required string type = 3;
+        optional string credentialId = 1;
+        optional string country = 2;
+        optional string type = 3;
         repeated SyncActionValue.CustomPaymentMethodMetadata metadata = 4;
     }
     message CustomPaymentMethodMetadata {
-        required string key = 1;
-        required string value = 2;
+        optional string key = 1;
+        optional string value = 2;
     }
     message CustomPaymentMethodsAction {
         repeated SyncActionValue.CustomPaymentMethod customPaymentMethods = 1;
@@ -256,7 +256,7 @@ message SyncActionValue {
         }
     }
     message InteractiveMessageAction {
-        required InteractiveMessageActionMode type = 1;
+        optional InteractiveMessageActionMode type = 1;
         optional string agmId = 2;
         enum InteractiveMessageActionMode {
             DISABLE_CTA = 1;
@@ -335,8 +335,8 @@ message SyncActionValue {
         optional int32 repliedCount = 1;
     }
     message MerchantPaymentPartnerAction {
-        required Status status = 1;
-        required string country = 2;
+        optional Status status = 1;
+        optional string country = 2;
         optional string gatewayName = 3;
         optional string credentialId = 4;
         enum Status {
@@ -391,8 +391,8 @@ message SyncActionValue {
         optional string cpi = 1;
     }
     message PaymentTosAction {
-        required PaymentNotice paymentNotice = 1;
-        required bool accepted = 2;
+        optional PaymentNotice paymentNotice = 1;
+        optional bool accepted = 2;
         enum PaymentNotice {
             BR_PAY_PRIVACY_POLICY = 0;
         }
