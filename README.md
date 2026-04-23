@@ -99,6 +99,16 @@ import makeWASocket from '@innovatorssoft/baileys'
         - [Admin Invite Message](#invite-admin-message) 
         - [Group Invite Message](#group-invite-message)
         - [Sticker Pack Message](#sticker-pack-message) 
+    - [Rich AI Response Messages](#rich-ai-response-messages)
+        - [Rich Response Message](#rich-response-message)
+        - [sendTable](#sendtable)
+        - [sendList](#sendlist)
+        - [sendCodeBlock](#sendcodeblock)
+        - [sendLatex](#sendlatex)
+        - [sendLatexImage](#sendlateximage)
+        - [sendLatexInlineImage](#sendlatexinlineimage)
+        - [sendRichMessage](#sendrichmessage)
+        - [captureUnifiedResponse / sendUnifiedResponse](#captureunifiedresponse--sendunifiedresponse)
         - [Share Phone Number Message](#share-phone-number-message) 
         - [Request Phone Number Message](#request-phone-number-message) 
         - [Buttons Reply Message](#buttons-reply-message) 
@@ -2048,6 +2058,233 @@ await sock.sendStatusMentions(
     jids // Limit to 5 mentions per status
 )
 ```
+
+---
+
+## Rich AI Response Messages
+
+These methods generate Meta AI–style rich response messages using the `botForwardedMessage → richResponseMessage` proto chain. All methods are available directly on the `sock` object.
+
+### Rich Response Message
+
+Send a text response (with optional syntax-highlighted code block) as a Meta AI–style rich message via `sock.sendMessage`:
+
+```js
+// Text only
+await sock.sendMessage(jid, {
+    richResponse: {
+        text: '*Hello!* This is a _rich_ response.',
+        // botJid: '259786046210223@bot' // optional, default provided
+    }
+})
+
+// Text + syntax-highlighted code block
+await sock.sendMessage(jid, {
+    richResponse: {
+        text: 'Here is a JavaScript example:',
+        code: `const greet = (name) => {
+  console.log('Hello, ' + name)
+}
+greet('World')`,
+        language: 'javascript' // 'javascript' | 'typescript' | 'python' | 'js' | 'ts' | 'py'
+    }
+})
+```
+
+---
+
+### sendTable
+
+Send a formatted table (header row + data rows):
+
+```js
+await sock.sendTable(
+    jid,
+    'Price List',                              // title
+    ['Item', 'Qty', 'Price'],                  // headers
+    [
+        ['Apple',  '3', '$1.50'],
+        ['Banana', '6', '$0.90'],
+        ['Cherry', '1', '$3.00']
+    ],                                         // data rows
+    null,                                      // quoted message (or null)
+    { headerText: 'Here is your order summary:', footer: 'Thank you!' }
+)
+```
+
+---
+
+### sendList
+
+Send a bulleted / single-column list:
+
+```js
+await sock.sendList(
+    jid,
+    'Available Commands',
+    ['!help', '!ping', '!menu', '!info'],
+    null,
+    { headerText: 'Bot commands:', footer: 'Type any command to use it.' }
+)
+
+// Multi-column rows are also supported
+await sock.sendList(
+    jid,
+    'Leaderboard',
+    [
+        ['1st', 'Alice', '980 pts'],
+        ['2nd', 'Bob',   '850 pts'],
+        ['3rd', 'Carol', '720 pts']
+    ],
+    null
+)
+```
+
+---
+
+### sendCodeBlock
+
+Send a syntax-highlighted code block:
+
+```js
+await sock.sendCodeBlock(
+    jid,
+    `async function fetchData(url) {
+  const res = await fetch(url)
+  return res.json()
+}`,
+    null,                          // quoted message (or null)
+    {
+        title: '📦 Example – fetch helper',
+        language: 'javascript',    // default
+        footer: 'Copy and paste into your project.'
+    }
+)
+```
+
+Supported languages: `javascript` (default), `typescript`, `js`, `ts`, `python`, `py`.
+
+---
+
+### sendLatex
+
+Send LaTeX expressions as text (no image rendering — fastest option):
+
+```js
+await sock.sendLatex(
+    jid,
+    null,  // quoted
+    {
+        text: 'Quadratic formula:',
+        expressions: [
+            { latexExpression: 'x = \\frac{-b \\pm \\sqrt{b^2 - 4ac}}{2a}', url: '', width: 0, height: 0 }
+        ]
+    }
+)
+```
+
+---
+
+### sendLatexImage
+
+Render LaTeX expressions to PNG images, upload, and send. You must supply a `renderLatexToPng` function and an `uploadFn`:
+
+```js
+await sock.sendLatexImage(
+    jid,
+    null,
+    {
+        text: 'Euler\'s Identity:',
+        expressions: [
+            { latexExpression: 'e^{i\\pi} + 1 = 0' }
+        ]
+    },
+    async (latexExpr) => {
+        // Return { buffer: Buffer, width: number, height: number }
+        const { buffer, info } = await sharp(await renderLatex(latexExpr)).toBuffer({ resolveWithObject: true })
+        return { buffer, width: info.width, height: info.height }
+    },
+    async (buffer, type) => {
+        // Return { url: string } or { directPath: string }
+        return await uploadMediaToWhatsApp(buffer, type)
+    }
+)
+```
+
+---
+
+### sendLatexInlineImage
+
+Same as `sendLatexImage`, but renders each expression as a separate inline image block:
+
+```js
+await sock.sendLatexInlineImage(
+    jid,
+    null,
+    {
+        text: 'Maxwell\'s Equations:',
+        expressions: [
+            { latexExpression: '\\nabla \\cdot \\mathbf{E} = \\frac{\\rho}{\\varepsilon_0}' },
+            { latexExpression: '\\nabla \\times \\mathbf{B} = \\mu_0 \\mathbf{J} + \\mu_0\\varepsilon_0 \\frac{\\partial \\mathbf{E}}{\\partial t}' }
+        ]
+    },
+    renderLatexToPng,
+    uploadFn
+)
+```
+
+---
+
+### sendRichMessage
+
+Send a fully custom rich message by assembling raw submessage objects:
+
+```js
+await sock.sendRichMessage(
+    jid,
+    [
+        { messageType: 2, messageText: '🤖 *AI Response*' },
+        {
+            messageType: 5,
+            codeMetadata: {
+                codeLanguage: 'python',
+                codeBlocks: [{ highlightType: 1, codeContent: 'print' }, { highlightType: 0, codeContent: '("Hello")' }]
+            }
+        },
+        { messageType: 2, messageText: '_Powered by Baileys_' }
+    ],
+    null  // quoted
+)
+```
+
+Submessage `messageType` values:
+| Value | Type         |
+|-------|--------------|
+| 2     | Text         |
+| 3     | Inline Image |
+| 4     | Table        |
+| 5     | Code Block   |
+| 8     | LaTeX        |
+
+---
+
+### captureUnifiedResponse / sendUnifiedResponse
+
+Capture a unified response from an incoming Meta AI message and forward it:
+
+```js
+// In your message handler:
+const captured = sock.captureUnifiedResponse(msg.message)
+
+if (captured) {
+    // Forward the AI response to another JID
+    await sock.sendUnifiedResponse(otherJid, null, captured)
+}
+```
+
+`captureUnifiedResponse` returns `null` if the message is not a rich AI response.
+
+---
 
 ### Shop Message
 ```ts
