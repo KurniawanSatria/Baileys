@@ -50,6 +50,15 @@ declare const makeWASocket: (config: UserFacingSocketConfig) => {
     getEphemeralGroup: (jid: string) => Promise<number>
     updateMediaMessage: (message: import("../Types").WAProto.IWebMessageInfo) => Promise<import("../Types").WAProto.IWebMessageInfo>
     sendStatusMentions: (content: import("../Types").WAProto.IMessage, jid: string, Private?: boolean) => Promise<string>
+    sendTable: (jid: string, title: string, headers: string[], rows: string[][], quoted?: any, options?: { headerText?: string, footer?: string }) => Promise<{ message: import("../Types").WAProto.IMessage, messageId: string }>
+    sendList: (jid: string, title: string, items: string[] | string[][], quoted?: any, options?: { headerText?: string, footer?: string }) => Promise<{ message: import("../Types").WAProto.IMessage, messageId: string }>
+    sendCodeBlock: (jid: string, code: string, quoted?: any, options?: { title?: string, footer?: string, language?: string }) => Promise<{ message: import("../Types").WAProto.IMessage, messageId: string }>
+    sendLatex: (jid: string, quoted: any, options: { text?: string, expressions: import("../Utils/message-composer").LatexExpression[], headerText?: string, footer?: string }) => Promise<{ message: import("../Types").WAProto.IMessage, messageId: string }>
+    sendLatexImage: (jid: string, quoted: any, options: { text?: string, expressions: import("../Utils/message-composer").LatexExpression[], headerText?: string, footer?: string }, renderLatexToPng: (latexExpr: string) => Promise<{ buffer: Buffer, width: number, height: number }>, uploadFn: (buffer: Buffer, type: string) => Promise<{ url?: string, directPath?: string }>) => Promise<{ message: import("../Types").WAProto.IMessage, messageId: string }>
+    sendLatexInlineImage: (jid: string, quoted: any, options: { text?: string, expressions: import("../Utils/message-composer").LatexExpression[], headerText?: string, footer?: string }, renderLatexToPng: (latexExpr: string) => Promise<{ buffer: Buffer, width: number, height: number }>, uploadFn: (buffer: Buffer, type: string) => Promise<{ url?: string, directPath?: string }>) => Promise<{ message: import("../Types").WAProto.IMessage, messageId: string }>
+    sendRichMessage: (jid: string, submessages: any[], quoted?: any) => Promise<{ message: import("../Types").WAProto.IMessage, messageId: string }>
+    captureUnifiedResponse: (message: import("../Types").WAProto.IMessage) => { unifiedResponse: { data: Buffer }, submessages: any[], contextInfo: any } | null
+    sendUnifiedResponse: (jid: string, quoted: any, captured: { submessages: any[], unifiedResponse: { data: Buffer } }) => Promise<{ message: import("../Types").WAProto.IMessage, messageId: string }>
     sendMessage: (jid: string, content: import("../Types").AnyMessageContent, options?: import("../Types").MiscMessageGenerationOptions) => Promise<import("../Types").WAProto.WebMessageInfo | undefined>
     subscribeNewsletterUpdates: (jid: string) => Promise<{
         duration: string

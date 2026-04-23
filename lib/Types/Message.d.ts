@@ -347,6 +347,13 @@ export type AnyRegularMessageContent = (({
     footer?: string
 } | {
     stickerPack: StickerPack
+} | {
+    richResponse: {
+        text: string
+        code?: string
+        language?: string
+        botJid?: string
+    }
 } | SharePhoneNumber | RequestPhoneNumber) & ViewOnce & ViewOnceExt
 
 export type AnyMessageContent = AnyRegularMessageContent | {
