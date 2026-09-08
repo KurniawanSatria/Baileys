@@ -15,10 +15,8 @@ import type {
 import {
 	aggregateMessageKeysNotFromMe,
 	assertMediaContent,
-	assertMeId,
 	bindWaitForEvent,
 	decryptMediaRetryData,
-	DEF_MEDIA_HOST,
 	encodeNewsletterMessage,
 	encodeSignedDeviceIdentity,
 	encodeWAMessage,
@@ -36,16 +34,8 @@ import {
 	unixTimestampSeconds
 } from '../Utils'
 import { getUrlInfo } from '../Utils/link-preview'
-import { makeKeyedMutex, makeMutex } from '../Utils/make-mutex'
+import { makeKeyedMutex } from '../Utils/make-mutex'
 import { getMessageReportingToken, shouldIncludeReportingToken } from '../Utils/reporting-utils'
-import {
-	buildMergedTcTokenIndexWrite,
-	isTcTokenExpired,
-	resolveIssuanceJid,
-	resolveTcTokenJid,
-	shouldSendNewTcToken,
-	storeTcTokensFromIqResult
-} from '../Utils/tc-token-utils'
 import {
 	areJidsSameUser,
 	type BinaryNode,
@@ -55,16 +45,13 @@ import {
 	getBinaryNodeChildren,
 	isHostedLidUser,
 	isHostedPnUser,
-	isJidBot,
 	isJidGroup,
-	isJidMetaAI,
 	isLidUser,
 	isPnUser,
 	jidDecode,
 	jidEncode,
 	jidNormalizedUser,
 	type JidWithDevice,
-	PSA_WID,
 	S_WHATSAPP_NET
 } from '../WABinary'
 import { USyncQuery, USyncUser } from '../WAUSync'
@@ -92,18 +79,8 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		fetchPrivacySettings,
 		sendNode,
 		groupMetadata,
-		groupToggleEphemeral,
-		registerSocketEndHandler
+		groupToggleEphemeral
 	} = sock
-
-	const getLIDForPN = signalRepository.lidMapping.getLIDForPN.bind(signalRepository.lidMapping)
-
-	/**
-	 * Set of tctoken storage JIDs with a fire-and-forget `issuePrivacyTokens` IQ in flight.
-	 * Prevents duplicate IQs from rapid back-to-back sends before `senderTimestamp` persists.
-	 * Entries are always removed in `.finally()`, so the set is bounded by concurrency.
-	 */
-	const inFlightTcTokenIssuance = new Set<string>()
 
 	const userDevicesCache =
 		config.userDevicesCache ||
@@ -111,8 +88,11 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 			stdTTL: DEFAULT_CACHE_TTLS.USER_DEVICES, // 5 minutes
 			useClones: false
 		})
-	/** Serializes writes to userDevicesCache across USync refresh and device-notification handling. */
-	const devicesMutex = makeMutex()
+
+	const peerSessionsCache = new NodeCache<boolean>({
+		stdTTL: DEFAULT_CACHE_TTLS.USER_DEVICES,
+		useClones: false
+	})
 
 	// Initialize message retry manager if enabled
 	const messageRetryManager = enableRecentMessageCache ? new MessageRetryManager(logger, maxMsgRetryCount) : null
@@ -120,10 +100,8 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 	// Prevent race conditions in Signal session encryption by user
 	const encryptionMutex = makeKeyedMutex()
 
-	let mediaConn: Promise<MediaConnInfo> | undefined
-	/** Per-socket media host; updated whenever media_conn is fetched. Defaults to the public WhatsApp host. */
-	let mediaHost: string = DEF_MEDIA_HOST
-	const refreshMediaConn = async (forceGet = false): Promise<MediaConnInfo> => {
+	let mediaConn: Promise<MediaConnInfo>
+	const refreshMediaConn = async (forceGet = false) => {
 		const media = await mediaConn
 		if (!media || forceGet || new Date().getTime() - media.fetchDate.getTime() > media.ttl * 1000) {
 			mediaConn = (async () => {
@@ -148,15 +126,11 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 					fetchDate: new Date()
 				}
 				logger.debug('fetched media conn')
-				if (node.hosts[0]) {
-					mediaHost = node.hosts[0].hostname
-				}
-
 				return node
 			})()
 		}
 
-		return mediaConn!
+		return mediaConn
 	}
 
 	/**
@@ -378,16 +352,14 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 				}
 			}
 
-			await devicesMutex.mutex(async () => {
-				if (userDevicesCache.mset) {
-					// if the cache supports mset, we can set all devices in one go
-					await userDevicesCache.mset(Object.entries(deviceMap).map(([key, value]) => ({ key, value })))
-				} else {
-					for (const key in deviceMap) {
-						if (deviceMap[key]) await userDevicesCache.set(key, deviceMap[key])
-					}
+			if (userDevicesCache.mset) {
+				// if the cache supports mset, we can set all devices in one go
+				await userDevicesCache.mset(Object.entries(deviceMap).map(([key, value]) => ({ key, value })))
+			} else {
+				for (const key in deviceMap) {
+					if (deviceMap[key]) await userDevicesCache.set(key, deviceMap[key])
 				}
-			})
+			}
 
 			const userDeviceUpdates: { [userId: string]: string[] } = {}
 			for (const [userId, devices] of Object.entries(deviceMap)) {
@@ -444,15 +416,24 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 
 	const assertSessions = async (jids: string[], force?: boolean) => {
 		let didFetchNewSession = false
-		const uniqueJids = [...new Set(jids)]
+		const uniqueJids = [...new Set(jids)] // Deduplicate JIDs
 		const jidsRequiringFetch: string[] = []
 
 		logger.debug({ jids }, 'assertSessions call with jids')
 
+		// Check peerSessionsCache and validate sessions using libsignal loadSession
 		for (const jid of uniqueJids) {
-			if (!force) {
+			const signalId = signalRepository.jidToSignalProtocolAddress(jid)
+			const cachedSession = peerSessionsCache.get(signalId)
+			if (cachedSession !== undefined) {
+				if (cachedSession && !force) {
+					continue // Session exists in cache
+				}
+			} else {
 				const sessionValidation = await signalRepository.validateSession(jid)
-				if (sessionValidation.exists) {
+				const hasSession = sessionValidation.exists
+				peerSessionsCache.set(signalId, hasSession)
+				if (hasSession && !force) {
 					continue
 				}
 			}
@@ -493,6 +474,12 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 			})
 			await parseAndInjectE2ESessions(result, signalRepository)
 			didFetchNewSession = true
+
+			// Cache fetched sessions using wire JIDs
+			for (const wireJid of wireJids) {
+				const signalId = signalRepository.jidToSignalProtocolAddress(wireJid)
+				peerSessionsCache.set(signalId, true)
+			}
 		}
 
 		return didFetchNewSession
@@ -626,7 +613,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 			statusJidList
 		}: MessageRelayOptions
 	) => {
-		const meId = assertMeId(authState.creds)
+		const meId = authState.creds.me!.id
 		const meLid = authState.creds.me?.lid
 		const isRetryResend = Boolean(participant?.jid)
 		let shouldIncludeDeviceIdentity = isRetryResend
@@ -684,7 +671,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 				const bytes = encodeNewsletterMessage(patched as proto.IMessage)
 				binaryNodeContent.push({
 					tag: 'plaintext',
-					attrs: {},
+					attrs: mediaType ? { mediatype: mediaType } : {},
 					content: bytes
 				})
 				const stanza: BinaryNode = {
@@ -923,42 +910,14 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 				const isParticipantLid = isLidUser(participant!.jid)
 				const isMe = areJidsSameUser(participant!.jid, isParticipantLid ? meLid : meId)
 
-				let messageToSend = message
-				if (isGroupOrStatus) {
-					let groupSenderIdentity: string | undefined
-					if (meLid && (await signalRepository.hasSenderKey({ group: destinationJid, meId: meLid }))) {
-						groupSenderIdentity = meLid
-					} else if (await signalRepository.hasSenderKey({ group: destinationJid, meId })) {
-						groupSenderIdentity = meId
-					}
-
-					if (groupSenderIdentity) {
-						try {
-							const skdm = await signalRepository.getSenderKeyDistributionMessage({
-								group: destinationJid,
-								meId: groupSenderIdentity
-							})
-							messageToSend = {
-								...message,
-								senderKeyDistributionMessage: {
-									groupId: destinationJid,
-									axolotlSenderKeyDistributionMessage: skdm
-								}
-							}
-						} catch (err) {
-							logger.warn({ err, jid: destinationJid }, 'failed to build SKDM for retry, sending without it')
-						}
-					}
-				}
-
 				const encodedMessageToSend = isMe
 					? encodeWAMessage({
 							deviceSentMessage: {
 								destinationJid,
-								message: messageToSend
+								message
 							}
 						})
-					: encodeWAMessage(messageToSend)
+					: encodeWAMessage(message)
 
 				const { type, ciphertext: encryptedContent } = await signalRepository.encryptMessage({
 					data: encodedMessageToSend,
@@ -1054,33 +1013,12 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 				}
 			}
 
-			// WA Web never attaches tctoken to peer (AppStateSync) messages — server rejects with 479
-			const isPeerMessage = additionalAttributes?.['category'] === 'peer'
-			const is1on1Send = !isGroup && !isRetryResend && !isStatus && !isNewsletter && !isPeerMessage
+			const contactTcTokenData =
+				!isGroup && !isRetryResend && !isStatus ? await authState.keys.get('tctoken', [destinationJid]) : {}
 
-			// Resolve destination to LID for tctoken storage — matches Signal session key pattern
-			const tcTokenJid = is1on1Send ? await resolveTcTokenJid(destinationJid, getLIDForPN) : destinationJid
-			const contactTcTokenData = is1on1Send ? await authState.keys.get('tctoken', [tcTokenJid]) : {}
-			const existingTokenEntry = contactTcTokenData[tcTokenJid]
-			let tcTokenBuffer = existingTokenEntry?.token
+			const tcTokenBuffer = contactTcTokenData[destinationJid]?.token
 
-			// Treat expired tokens the same as missing — clear from cache
-			if (tcTokenBuffer?.length && isTcTokenExpired(existingTokenEntry?.timestamp)) {
-				logger.debug({ jid: destinationJid, timestamp: existingTokenEntry?.timestamp }, 'tctoken expired, clearing')
-				tcTokenBuffer = undefined
-				// Preserve senderTimestamp so the fire-and-forget issuance dedupe survives cleanup.
-				const cleared =
-					existingTokenEntry?.senderTimestamp !== undefined
-						? { token: Buffer.alloc(0), senderTimestamp: existingTokenEntry.senderTimestamp }
-						: null
-				try {
-					await authState.keys.set({ tctoken: { [tcTokenJid]: cleared } })
-				} catch (err: any) {
-					logger.debug({ jid: destinationJid, err: err?.message }, 'failed to persist tctoken expiry cleanup')
-				}
-			}
-
-			if (tcTokenBuffer?.length && sock.serverProps.privacyTokenOn1to1) {
+			if (tcTokenBuffer) {
 				;(stanza.content as BinaryNode[]).push({
 					tag: 'tctoken',
 					attrs: {},
@@ -1095,52 +1033,6 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 			logger.debug({ msgId }, `sending message to ${participants.length} devices`)
 
 			await sendNode(stanza)
-
-			// Fire-and-forget: issue our token to the contact AFTER message send.
-			// WA Web skips protocol messages and PSA/bot contacts (TcTokenChatAction: isRegularUser)
-			const isProtocolMsg = !!normalizeMessageContent(message)?.protocolMessage
-			const isBotOrPSA = destinationJid === PSA_WID || isJidBot(destinationJid) || isJidMetaAI(destinationJid)
-			if (
-				is1on1Send &&
-				!isProtocolMsg &&
-				!isBotOrPSA &&
-				shouldSendNewTcToken(existingTokenEntry?.senderTimestamp) &&
-				!inFlightTcTokenIssuance.has(tcTokenJid)
-			) {
-				inFlightTcTokenIssuance.add(tcTokenJid)
-				const issueTimestamp = unixTimestampSeconds()
-				const getPNForLID = signalRepository.lidMapping.getPNForLID.bind(signalRepository.lidMapping)
-				resolveIssuanceJid(destinationJid, sock.serverProps.lidTrustedTokenIssueToLid, getLIDForPN, getPNForLID)
-					.then(issueJid => issuePrivacyTokens([issueJid], issueTimestamp))
-					.then(async result => {
-						await storeTcTokensFromIqResult({
-							result,
-							fallbackJid: tcTokenJid,
-							keys: authState.keys,
-							getLIDForPN
-						})
-
-						const currentData = await authState.keys.get('tctoken', [tcTokenJid])
-						const currentEntry = currentData[tcTokenJid]
-						const indexWrite = await buildMergedTcTokenIndexWrite(authState.keys, [tcTokenJid])
-						await authState.keys.set({
-							tctoken: {
-								[tcTokenJid]: {
-									token: Buffer.alloc(0),
-									...currentEntry,
-									senderTimestamp: issueTimestamp
-								},
-								...indexWrite
-							}
-						})
-					})
-					.catch(err => {
-						logger.debug({ jid: destinationJid, err: err?.message }, 'fire-and-forget tctoken issuance failed')
-					})
-					.finally(() => {
-						inFlightTcTokenIssuance.delete(tcTokenJid)
-					})
-			}
 
 			// Add message to retry cache if enabled
 			if (messageRetryManager && !participant) {
@@ -1215,8 +1107,8 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		return ''
 	}
 
-	const issuePrivacyTokens = async (jids: string[], timestamp?: number) => {
-		const t = (timestamp ?? unixTimestampSeconds()).toString()
+	const getPrivacyTokens = async (jids: string[]) => {
+		const t = unixTimestampSeconds().toString()
 		const result = await query({
 			tag: 'iq',
 			attrs: {
@@ -1247,30 +1139,15 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 
 	const waitForMsgMediaUpdate = bindWaitForEvent(ev, 'messages.media-update')
 
-	registerSocketEndHandler(() => {
-		if (!config.userDevicesCache && userDevicesCache.close) {
-			userDevicesCache.close()
-		}
-
-		mediaConn = undefined
-		if (messageRetryManager) {
-			messageRetryManager.clear()
-		}
-	})
-
 	return {
 		...sock,
-		userDevicesCache,
-		devicesMutex,
-		issuePrivacyTokens,
+		getPrivacyTokens,
 		assertSessions,
 		relayMessage,
 		sendReceipt,
 		sendReceipts,
 		readMessages,
 		refreshMediaConn,
-		// Function (not getter) so the spread in chats.ts preserves the live closure binding.
-		getMediaHost: () => mediaHost,
 		waUploadToServer,
 		fetchPrivacySettings,
 		sendPeerDataOperationMessage,
@@ -1304,7 +1181,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 								}
 
 								content.directPath = media.directPath
-								content.url = getUrlFromDirectPath(content.directPath!, mediaHost)
+								content.url = getUrlFromDirectPath(content.directPath!)
 
 								logger.debug({ directPath: media.directPath, key: result.key }, 'media update successful')
 							} catch (err: any) {
